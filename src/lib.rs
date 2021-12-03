@@ -1,8 +1,19 @@
+extern crate wasm_bindgen;
+
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn greet(name: &str) -> String {
+    let message = format!("Hello, {}!!!", name);
+    message.to_string()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn greet_name() {
+        assert_eq!(greet("world"), "Hello, world!!!");
     }
 }
