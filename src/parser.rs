@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 /// let a = Location(start, end);
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Location(i32, i32);
+struct Location(usize, usize);
 
 impl Location {
     fn merge(&self, target: Location) -> Location {
@@ -29,6 +29,7 @@ impl<T> Annotation<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum TokenKind {
     OpenBrace, // `{`
     CloseBrace, // `}`
@@ -114,6 +115,43 @@ impl LexerError {
     }
 }
 
+struct Lexer<'a> {
+    input: &'a str,
+}
+
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Lexer {
+            input,
+        }
+    }
+
+    pub fn tokenize(&self) -> Result<Vec<Token>, LexerError> {
+        use std::str::from_utf8;
+
+        let mut tokens = vec![];
+        let input = self.input.as_bytes();
+        let mut pos = 0;
+
+        while pos < input.len() {
+            let start = pos;
+            let end = pos + 1;
+            let value = from_utf8(&input[start..end]).unwrap();
+            match value {
+                "{" => tokens.push(Token::open_brace(Location(start, end))),
+                "}" => tokens.push(Token::close_brace(Location(start, end))),
+                // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
+                // ループ条件を見直してiteratorにした方がやりやすいかも
+                _ => (),
+            }
+
+            pos += 1;
+        }
+
+        Ok(tokens)
+    }
+}
+
 #[wasm_bindgen]
 pub fn greet(name: &str) -> String {
     let message = format!("Hello, {}!!!", name);
@@ -136,5 +174,18 @@ mod tests {
     #[test]
     fn greet_name() {
         assert_eq!(greet("world"), "Hello, world!!!");
+    }
+
+    #[test]
+    fn lexer_should_success_parse() {
+        let lexer = Lexer::new("{'\
+            \"name\": \"\"\
+        }");
+        let result = lexer.tokenize().expect("lexerは配列を返します。");
+        let expected: Vec<Token> = vec![
+            Token::open_brace(Location(0, 1)),
+            Token::close_brace(Location(12, 13)),
+        ];
+        assert_eq!(expected, result);
     }
 }
