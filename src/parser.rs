@@ -1,6 +1,7 @@
 extern crate wasm_bindgen;
 
 use std::cmp::{max, min};
+use std::str::Bytes;
 use wasm_bindgen::prelude::*;
 
 /// Location情報
@@ -115,26 +116,24 @@ impl LexerError {
     }
 }
 
-struct Lexer {
-    // todo add config
+struct Lexer<'a> {
+    input: Bytes<'a>,
+    pos: usize,
 }
 
-impl Lexer {
-    pub fn new() -> Self {
-        Lexer {}
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Lexer {
+            input: input.bytes(),
+            pos: 0,
+        }
     }
 
-    pub fn tokenize(&self, input: &str) -> Result<Vec<Token>, LexerError> {
-        use std::str::from_utf8;
-
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
-        let input = input.as_bytes();
-        let mut pos = 0;
 
-        while pos < input.len() {
-            let start = pos;
-            let end = pos + 1;
-            let value = from_utf8(&input[start..end]).unwrap();
+        while let Some((value, start, end)) = self.next_byte_info() {
+            let value: &str = &value;
             match value {
                 "{" => tokens.push(Token::open_brace(Location(start, end))),
                 "}" => tokens.push(Token::close_brace(Location(start, end))),
@@ -142,11 +141,24 @@ impl Lexer {
                 // ループ条件を見直してiteratorにした方がやりやすいかも
                 _ => (),
             };
-
-            pos += 1;
         }
 
         Ok(tokens)
+    }
+
+    fn next_byte_info(&mut self) -> Option<(String, usize, usize)> {
+        use std::str::from_utf8;
+
+        let input = &mut self.input;
+
+        if let Some(b) = input.next() {
+            // todo 1文字ずつ返してるので、一気にToken単位まで読み込めるようにしたい
+            let start = self.pos;
+            let value = from_utf8(&[b]).unwrap().to_string();
+            self.pos += 1;
+            return Some((value, start, self.pos))
+        };
+        None
     }
 }
 
@@ -176,14 +188,12 @@ mod tests {
 
     #[test]
     fn lexer_should_success_parse() {
-        let lexer = Lexer::new();
-        let result = lexer
-            .tokenize(
-                "{'
+        let mut lexer = Lexer::new(
+            "{'
     \"name\": \"\"
 }",
-            )
-            .expect("lexerは配列を返します。");
+        );
+        let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
             Token::close_brace(Location(18, 19)),
