@@ -1,6 +1,7 @@
 extern crate wasm_bindgen;
 
 use std::cmp::{max, min};
+use std::iter::Peekable;
 use std::str::Bytes;
 use wasm_bindgen::prelude::*;
 
@@ -117,14 +118,14 @@ impl LexerError {
 }
 
 struct Lexer<'a> {
-    input: Bytes<'a>,
+    input: Peekable<Bytes<'a>>,
     pos: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
-            input: input.bytes(),
+            input: input.bytes().peekable(),
             pos: 0,
         }
     }
@@ -152,7 +153,11 @@ impl<'a> Lexer<'a> {
         let input = &mut self.input;
 
         if let Some(b) = input.next() {
-            // todo 1文字ずつ返してるので、一気にToken単位まで読み込めるようにしたい
+            /// 以下実装Todo
+            /// 1. 直前に読み込んでた文字列が連続的な値を持つTokenかどうか
+            /// 2. そうならpeekした値とくっつけてmatch
+            /// 3. matchしないなら再帰
+            /// 4. 想定外のTokenとマッチするようならエラー
             let start = self.pos;
             let value = from_utf8(&[b]).unwrap().to_string();
             self.pos += 1;
