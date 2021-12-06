@@ -17,11 +17,11 @@ impl Location {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Annotation<T> {
     pub value: T,
-    location: Location,
+    location: Option<Location>,
 }
 
 impl<T> Annotation<T> {
-    pub fn new(value: T, location: Location) -> Self {
+    pub fn new(value: T, location: Option<Location>) -> Self {
         Annotation { value, location }
     }
 }
@@ -47,67 +47,68 @@ pub type Token = Annotation<TokenKind>;
 
 impl Token {
     pub fn open_brace(location: Location) -> Self {
-        Self::new(TokenKind::OpenBrace, location)
+        Self::new(TokenKind::OpenBrace, Some(location))
     }
 
     pub fn close_brace(location: Location) -> Self {
-        Self::new(TokenKind::CloseBrace, location)
+        Self::new(TokenKind::CloseBrace, Some(location))
     }
 
     pub fn open_bracket(location: Location) -> Self {
-        Self::new(TokenKind::OpenBracket, location)
+        Self::new(TokenKind::OpenBracket, Some(location))
     }
 
     pub fn close_bracket(location: Location) -> Self {
-        Self::new(TokenKind::CloseBracket, location)
+        Self::new(TokenKind::CloseBracket, Some(location))
     }
 
     pub fn string(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::StringValue(value.to_string()), location)
+        Self::new(TokenKind::StringValue(value.to_string()), Some(location))
     }
 
     pub fn number(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::Number(value.to_string()), location)
+        Self::new(TokenKind::Number(value.to_string()), Some(location))
     }
 
     pub fn boolean(value: bool, location: Location) -> Self {
-        Self::new(TokenKind::Boolean(value), location)
+        Self::new(TokenKind::Boolean(value), Some(location))
     }
 
     pub fn null(location: Location) -> Self {
-        Self::new(TokenKind::Null, location)
+        Self::new(TokenKind::Null, Some(location))
     }
 
     pub fn comment_line(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::CommentLine(value.to_string()), location)
+        Self::new(TokenKind::CommentLine(value.to_string()), Some(location))
     }
 
     pub fn comment_block(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::CommentBlock(value.to_string()), location)
+        Self::new(TokenKind::CommentBlock(value.to_string()), Some(location))
     }
 
     pub fn comma(location: Location) -> Self {
-        Self::new(TokenKind::Comma, location)
+        Self::new(TokenKind::Comma, Some(location))
     }
 
     pub fn colon(location: Location) -> Self {
-        Self::new(TokenKind::Colon, location)
+        Self::new(TokenKind::Colon, Some(location))
     }
 
     pub fn white_spaces(length: i32, location: Location) -> Self {
-        Self::new(TokenKind::WhiteSpaces(length), location)
+        Self::new(TokenKind::WhiteSpaces(length), Some(location))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LexerErrorKind {
     InvalidChars(String),
+    NotExistTerminalSymbol, // 終端記号が不在
 }
 
 pub type LexerError = Annotation<LexerErrorKind>;
 
 impl LexerError {
-    pub fn invalid_chars(chars: String, location: Location) -> Self {
+    pub fn invalid_chars(chars: String, location: Option<Location>) -> Self {
         Annotation::new(LexerErrorKind::InvalidChars(chars), location)
     }
 }

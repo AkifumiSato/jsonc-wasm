@@ -25,14 +25,14 @@ impl<'a> Lexer<'a> {
             match char {
                 '{' => tokens.push(Token::open_brace(Location(index, index + 1))),
                 '}' => tokens.push(Token::close_brace(Location(index, index + 1))),
-                ':' => tokens.push(Token::colon(Location(index, index + 1))),
-                ',' => tokens.push(Token::comma(Location(index, index + 1))),
-                // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
-                // ループ条件を見直してiteratorにした方がやりやすいかも
+                '[' => tokens.push(Token::open_bracket(Location(index, index + 1))),
+                ']' => tokens.push(Token::close_bracket(Location(index, index + 1))),
                 '"' => {
                     let token = self.parse_string_token()?;
                     tokens.push(token);
                 }
+                ':' => tokens.push(Token::colon(Location(index, index + 1))),
+                ',' => tokens.push(Token::comma(Location(index, index + 1))),
                 _ => (),
             };
         }
@@ -57,13 +57,15 @@ impl<'a> Lexer<'a> {
         }
         let current = self.input.peek();
         if current.is_none() {
-            // todo 未実装
-            panic!("todo: 未実装です");
+            Err(LexerError::new(
+                LexerErrorKind::NotExistTerminalSymbol,
+                None,
+            ))
         } else {
             let current = current.unwrap();
             Err(LexerError::new(
                 LexerErrorKind::InvalidChars(value),
-                Location(current.0.clone(), times),
+                Some(Location(current.0.clone(), times)),
             ))
         }
     }
