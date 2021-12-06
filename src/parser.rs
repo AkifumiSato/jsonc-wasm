@@ -31,9 +31,9 @@ impl<T> Annotation<T> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum TokenKind {
-    OpenBrace, // `{`
-    CloseBrace, // `}`
-    OpenBracket, // `[`
+    OpenBrace,    // `{`
+    CloseBrace,   // `}`
+    OpenBracket,  // `[`
     CloseBracket, // `]`
     String(String),
     Number(String), // 浮動少数誤差を扱わないため、String
@@ -121,9 +121,7 @@ struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        Lexer {
-            input,
-        }
+        Lexer { input }
     }
 
     pub fn tokenize(&self) -> Result<Vec<Token>, LexerError> {
@@ -178,9 +176,11 @@ mod tests {
 
     #[test]
     fn lexer_should_success_parse() {
-        let lexer = Lexer::new("{'\
-            \"name\": \"\"\
-        }");
+        let lexer = Lexer::new(
+            "{'
+    \"name\": \"\"
+}",
+        );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
