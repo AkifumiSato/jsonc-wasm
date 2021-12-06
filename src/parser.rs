@@ -37,7 +37,7 @@ enum TokenKind {
     CloseBrace,   // `}`
     OpenBracket,  // `[`
     CloseBracket, // `]`
-    String(String),
+    StringValue(String),
     Number(String), // 浮動少数誤差を扱わないため、String
     Boolean(bool),
     Null,
@@ -68,7 +68,7 @@ impl Token {
     }
 
     fn string(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::String(value.to_string()), location)
+        Self::new(TokenKind::StringValue(value.to_string()), location)
     }
 
     fn number(value: &str, location: Location) -> Self {
@@ -140,6 +140,10 @@ impl<'a> Lexer<'a> {
                 "}" => tokens.push(Token::close_brace(Location(start, end))),
                 // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
                 // ループ条件を見直してiteratorにした方がやりやすいかも
+                "\"" => {
+                    let token = self.parse_string_token()?;
+                    tokens.push(token);
+                },
                 _ => (),
             };
         }
@@ -153,17 +157,41 @@ impl<'a> Lexer<'a> {
         let input = &mut self.input;
 
         if let Some(b) = input.next() {
-            /// 以下実装Todo
-            /// 1. 直前に読み込んでた文字列が連続的な値を持つTokenかどうか
-            /// 2. そうならpeekした値とくっつけてmatch
-            /// 3. matchしないなら再帰
-            /// 4. 想定外のTokenとマッチするようならエラー
+            // 以下実装Todo
+            // 1. 直前に読み込んでた文字列が連続的な値を持つTokenかどうか
+            // 2. そうならpeekした値とくっつけてmatch
+            // 3. matchしないなら再帰
+            // 4. 想定外のTokenとマッチするようならエラー
             let start = self.pos;
             let value = from_utf8(&[b]).unwrap().to_string();
             self.pos += 1;
             return Some((value, start, self.pos))
         };
         None
+    }
+
+    fn parse_string_token(&mut self) -> Result<Token, LexerError> {
+        use std::str::from_utf8;
+
+        let mut value = String::new();
+        let start = self.pos;
+
+        while let Some(byte) = self.input.next() {
+            let target = &[byte].clone();
+            let char = from_utf8(target).unwrap();
+
+            match char {
+                "\"" => {
+                    return Ok(Token::string(&value, Location(start, self.pos)));
+                },
+                _ => {
+                    value.push_str(char);
+                    self.pos += 1;
+                }
+                // todo escape文字列の処理
+            }
+        }
+        Err(LexerError::new(LexerErrorKind::InvalidChars(value), Location(start, self.pos)))
     }
 }
 
@@ -195,17 +223,21 @@ mod tests {
     fn lexer_should_success_parse() {
         let mut lexer = Lexer::new(
             "{'
-    \"name\": \"\"
+    \"name\": \"sato\"
 }",
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
-            Token::close_brace(Location(18, 19)),
+            Token::string("name", Location(8, 12)),
+            Token::string("sato", Location(15, 19)),
+            Token::close_brace(Location(20, 21)),
         ];
-        assert_eq!(2, result.len());
+        assert_eq!(4, result.len());
         assert_eq!(TokenKind::OpenBrace, result[0].value);
-        assert_eq!(TokenKind::CloseBrace, result[1].value);
+        assert_eq!(TokenKind::StringValue("name".to_string()), result[1].value);
+        assert_eq!(TokenKind::StringValue("sato".to_string()), result[2].value);
+        assert_eq!(TokenKind::CloseBrace, result[3].value);
         assert_eq!(expected, result);
     }
 }
