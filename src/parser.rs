@@ -1,8 +1,8 @@
 extern crate wasm_bindgen;
 
 use std::cmp::{max, min};
-use std::iter::Peekable;
-use std::str::Bytes;
+use std::iter::{Enumerate, Peekable};
+use std::str::{Chars};
 use wasm_bindgen::prelude::*;
 
 /// Location情報
@@ -118,14 +118,14 @@ impl LexerError {
 }
 
 struct Lexer<'a> {
-    input: Peekable<Bytes<'a>>,
+    input: Peekable<Enumerate<Chars<'a>>>,
     pos: usize,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
-            input: input.bytes().peekable(),
+            input: input.chars().enumerate().peekable(),
             pos: 0,
         }
     }
@@ -133,16 +133,15 @@ impl<'a> Lexer<'a> {
     pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
 
-        while let Some((value, start, end)) = self.next_byte_info() {
-            let value: &str = &value;
-            match value {
-                "{" => tokens.push(Token::open_brace(Location(start, end))),
-                "}" => tokens.push(Token::close_brace(Location(start, end))),
-                ":" => tokens.push(Token::colon(Location(start, end))),
-                "," => tokens.push(Token::comma(Location(start, end))),
+        while let Some((index, char)) = self.input.next() {
+            match char {
+                '{' => tokens.push(Token::open_brace(Location(index, index + 1))),
+                '}' => tokens.push(Token::close_brace(Location(index, index + 1))),
+                ':' => tokens.push(Token::colon(Location(index, index + 1))),
+                ',' => tokens.push(Token::comma(Location(index, index + 1))),
                 // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
                 // ループ条件を見直してiteratorにした方がやりやすいかも
-                "\"" => {
+                '"' => {
                     let token = self.parse_string_token()?;
                     tokens.push(token);
                 },
@@ -153,47 +152,30 @@ impl<'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    fn next_byte_info(&mut self) -> Option<(String, usize, usize)> {
-        use std::str::from_utf8;
-
-        let input = &mut self.input;
-
-        if let Some(b) = input.next() {
-            // 以下実装Todo
-            // 1. 直前に読み込んでた文字列が連続的な値を持つTokenかどうか
-            // 2. そうならpeekした値とくっつけてmatch
-            // 3. matchしないなら再帰
-            // 4. 想定外のTokenとマッチするようならエラー
-            let start = self.pos;
-            let value = from_utf8(&[b]).unwrap().to_string();
-            self.pos += 1;
-            return Some((value, start, self.pos))
-        };
-        None
-    }
-
     fn parse_string_token(&mut self) -> Result<Token, LexerError> {
-        use std::str::from_utf8;
-
         let mut value = String::new();
-        let start = self.pos;
+        let mut times = 0;
 
-        while let Some(byte) = self.input.next() {
-            let target = &[byte].clone();
-            let char = from_utf8(target).unwrap();
-
+        while let Some((index, char)) = self.input.next() {
             match char {
-                "\"" => {
-                    return Ok(Token::string(&value, Location(start, self.pos)));
+                '"' => {
+                    return Ok(Token::string(&value, Location(index - times, index)));
                 },
                 _ => {
-                    value.push_str(char);
-                    self.pos += 1;
+                    value.push(char);
+                    times += 1;
                 }
                 // todo escape文字列の処理
             }
         }
-        Err(LexerError::new(LexerErrorKind::InvalidChars(value), Location(start, self.pos)))
+        let current = self.input.peek();
+        if current.is_none() {
+            // todo 未実装
+            panic!("todo: 未実装です");
+        } else {
+            let current = current.unwrap();
+            Err(LexerError::new(LexerErrorKind::InvalidChars(value), Location(current.0.clone(), times)))
+        }
     }
 }
 
@@ -232,16 +214,16 @@ mod tests {
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
             Token::string("name", Location(8, 12)),
-            Token::colon(Location(12, 13)),
-            Token::string("sato", Location(15, 19)),
-            Token::close_brace(Location(20, 21)),
+            Token::colon(Location(13, 14)),
+            Token::string("sato", Location(16, 20)),
+            Token::close_brace(Location(22, 23)),
         ];
-        assert_eq!(5, result.len());
-        assert_eq!(TokenKind::OpenBrace, result[0].value);
-        assert_eq!(TokenKind::StringValue("name".to_string()), result[1].value);
-        assert_eq!(TokenKind::Colon, result[2].value);
-        assert_eq!(TokenKind::StringValue("sato".to_string()), result[3].value);
-        assert_eq!(TokenKind::CloseBrace, result[4].value);
-        assert_eq!(expected, result);
+        assert_eq!(5, result.len(), "token配列の長さが想定外です。");
+        assert_eq!(TokenKind::OpenBrace, result[0].value, "tokenの0番目が想定外です。");
+        assert_eq!(TokenKind::StringValue("name".to_string()), result[1].value, "tokenの1番目が想定外です。");
+        assert_eq!(TokenKind::Colon, result[2].value, "tokenの2番目が想定外です。");
+        assert_eq!(TokenKind::StringValue("sato".to_string()), result[3].value, "tokenの3番目が想定外です。");
+        assert_eq!(TokenKind::CloseBrace, result[4].value, "tokenの4番目が想定外です。");
+        assert_eq!(expected, result, "token配列のequalsが想定外です。");
     }
 }
