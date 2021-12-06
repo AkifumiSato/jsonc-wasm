@@ -138,6 +138,8 @@ impl<'a> Lexer<'a> {
             match value {
                 "{" => tokens.push(Token::open_brace(Location(start, end))),
                 "}" => tokens.push(Token::close_brace(Location(start, end))),
+                ":" => tokens.push(Token::colon(Location(start, end))),
+                "," => tokens.push(Token::comma(Location(start, end))),
                 // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
                 // ループ条件を見直してiteratorにした方がやりやすいかも
                 "\"" => {
@@ -230,14 +232,16 @@ mod tests {
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
             Token::string("name", Location(8, 12)),
+            Token::colon(Location(12, 13)),
             Token::string("sato", Location(15, 19)),
             Token::close_brace(Location(20, 21)),
         ];
-        assert_eq!(4, result.len());
+        assert_eq!(5, result.len());
         assert_eq!(TokenKind::OpenBrace, result[0].value);
         assert_eq!(TokenKind::StringValue("name".to_string()), result[1].value);
-        assert_eq!(TokenKind::StringValue("sato".to_string()), result[2].value);
-        assert_eq!(TokenKind::CloseBrace, result[3].value);
+        assert_eq!(TokenKind::Colon, result[2].value);
+        assert_eq!(TokenKind::StringValue("sato".to_string()), result[3].value);
+        assert_eq!(TokenKind::CloseBrace, result[4].value);
         assert_eq!(expected, result);
     }
 }
