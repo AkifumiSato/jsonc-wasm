@@ -115,20 +115,20 @@ impl LexerError {
     }
 }
 
-struct Lexer<'a> {
-    input: &'a str,
+struct Lexer {
+    // todo add config
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
-        Lexer { input }
+impl Lexer {
+    pub fn new() -> Self {
+        Lexer {}
     }
 
-    pub fn tokenize(&self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(&self, input: &str) -> Result<Vec<Token>, LexerError> {
         use std::str::from_utf8;
 
         let mut tokens = vec![];
-        let input = self.input.as_bytes();
+        let input = input.as_bytes();
         let mut pos = 0;
 
         while pos < input.len() {
@@ -141,7 +141,7 @@ impl<'a> Lexer<'a> {
                 // todo 文字列や数字の読み込みで特定のバイト数まで一気に読み込めるよう実装
                 // ループ条件を見直してiteratorにした方がやりやすいかも
                 _ => (),
-            }
+            };
 
             pos += 1;
         }
@@ -176,16 +176,21 @@ mod tests {
 
     #[test]
     fn lexer_should_success_parse() {
-        let lexer = Lexer::new(
-            "{'
+        let lexer = Lexer::new();
+        let result = lexer
+            .tokenize(
+                "{'
     \"name\": \"\"
 }",
-        );
-        let result = lexer.tokenize().expect("lexerは配列を返します。");
+            )
+            .expect("lexerは配列を返します。");
         let expected: Vec<Token> = vec![
             Token::open_brace(Location(0, 1)),
-            Token::close_brace(Location(12, 13)),
+            Token::close_brace(Location(18, 19)),
         ];
+        assert_eq!(2, result.len());
+        assert_eq!(TokenKind::OpenBrace, result[0].value);
+        assert_eq!(TokenKind::CloseBrace, result[1].value);
         assert_eq!(expected, result);
     }
 }
