@@ -215,6 +215,16 @@ mod tests {
     }
 
     #[test]
+    fn parse_bool_token_should_err_with_true() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":tru");
+        // 最初の`t`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        assert!(lexer.parse_bool_token(true, index).is_err());
+    }
+
+    #[test]
     fn parse_bool_token_should_return_false_token() {
         // 部分的なテストのためのinvalid json
         let mut lexer = Lexer::new(":false,");
@@ -226,5 +236,15 @@ mod tests {
         } else {
             panic!("[parse_string_token]がErrを返しました。");
         };
+    }
+
+    #[test]
+    fn parse_bool_token_should_err_with_false() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":fal");
+        // 最初の`f`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        assert!(lexer.parse_bool_token(false, index).is_err());
     }
 }
