@@ -85,6 +85,42 @@ impl<'a> Lexer<'a> {
             None,
         ))
     }
+
+    fn parse_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token, LexerError> {
+        let mut s = String::new();
+        let mut location: Location;
+        if expect_bool {
+            location = Location(index, index + 3);
+            // すでに最初の`t`は消費されている前提なので残り文字を精査
+            s = (0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            let result = if s == "rue" {
+                Ok(Token::boolean(true, location))
+            } else {
+                Err(LexerError::new(
+                    LexerErrorKind::InvalidChars("t".to_string()+ &s),
+                    Some(location),
+                ))
+            };
+            return result
+        } else {
+            location = Location(index, index + 4);
+            // すでに最初の`f`は消費されている前提なので残り文字を精査
+            s = (0..4).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            let result = if s == "alse" {
+                Ok(Token::boolean(false, location))
+            } else {
+                return Err(LexerError::new(
+                    LexerErrorKind::InvalidChars("f".to_string()+ &s),
+                    Some(location),
+                ))
+            };
+            return result
+        };
+        // Err(LexerError::new(
+        //     LexerErrorKind::InvalidChars("t".to_string()+ &s),
+        //     None, // todo location
+        // ))
+    }
 }
 
 #[wasm_bindgen]
@@ -96,7 +132,6 @@ pub fn greet(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::TokenKind;
 
     #[test]
     fn greet_name() {
@@ -176,5 +211,33 @@ mod tests {
         lexer.input.next();
         let (_, first) = lexer.input.next().unwrap();
         assert!(lexer.parse_number_token(first).is_err());
+    }
+
+    #[test]
+    fn parse_bool_token_should_return_true_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":true,");
+        // 最初の`t`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        if let Ok(token) = lexer.parse_bool_token(true, index) {
+            assert_eq!(Token::boolean(true, Location(1, 4)), token);
+        } else {
+            panic!("[parse_string_token]がErrを返しました。");
+        };
+    }
+
+    #[test]
+    fn parse_bool_token_should_return_false_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":false,");
+        // 最初の`f`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        if let Ok(token) = lexer.parse_bool_token(false, index) {
+            assert_eq!(Token::boolean(false, Location(1, 5)), token);
+        } else {
+            panic!("[parse_string_token]がErrを返しました。");
+        };
     }
 }
