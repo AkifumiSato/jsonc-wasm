@@ -22,8 +22,8 @@ impl<'a> Lexer<'a> {
     pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
         let mut tokens = vec![];
 
-        while let Some((index, char)) = self.input.next() {
-            match char {
+        while let Some((index, c)) = self.input.next() {
+            match c {
                 '{' => tokens.push(Token::open_brace(Location(index, index + 1))),
                 '}' => tokens.push(Token::close_brace(Location(index, index + 1))),
                 '[' => tokens.push(Token::open_bracket(Location(index, index + 1))),
@@ -136,12 +136,12 @@ mod tests {
 
     #[test]
     fn parse_string_token_should_return_token() {
-        let mut lexer = Lexer::new("{\"name\": \"sato\"}");
-        // 最初の`"`まで進める
-        lexer.input.next();
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new("{name\"");
+        // `{`の分のみ進める
         lexer.input.next();
         if let Ok(token) = lexer.parse_string_token() {
-            assert_eq!(Token::string("name", Location(2, 6)), token);
+            assert_eq!(Token::string("name", Location(1, 5)), token);
         } else {
             panic!("[parse_string_token]がErrを返しました。");
         };
@@ -149,10 +149,8 @@ mod tests {
 
     #[test]
     fn parse_string_token_should_err() {
-        let mut lexer = Lexer::new("{\"name");
-        // 最初の`"`まで進める
-        lexer.input.next();
-        lexer.input.next();
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new("name");
         assert!(lexer.parse_string_token().is_err());
     }
 }
