@@ -153,4 +153,28 @@ mod tests {
         let mut lexer = Lexer::new("name");
         assert!(lexer.parse_string_token().is_err());
     }
+
+    #[test]
+    fn parse_number_token_should_return_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":100,");
+        // 最初の`"`まで進める
+        lexer.input.next();
+        let (_, first) = lexer.input.next().unwrap();
+        if let Ok(token) = lexer.parse_number_token(first) {
+            assert_eq!(Token::number("100", Location(2, 4)), token);
+        } else {
+            panic!("[parse_string_token]がErrを返しました。");
+        };
+    }
+
+    #[test]
+    fn parse_number_token_should_err() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":100");
+        // 最初の`"`まで進める
+        lexer.input.next();
+        let (_, first) = lexer.input.next().unwrap();
+        assert!(lexer.parse_number_token(first).is_err());
+    }
 }
