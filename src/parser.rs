@@ -36,6 +36,14 @@ impl<'a> Lexer<'a> {
                     let token = self.parse_number_token(c)?;
                     tokens.push(token);
                 }
+                't' => {
+                    let token = self.parse_bool_token(true, index)?;
+                    tokens.push(token);
+                },
+                'f' => {
+                    let token = self.parse_bool_token(false, index)?;
+                    tokens.push(token);
+                },
                 ':' => tokens.push(Token::colon(Location(index, index + 1))),
                 ',' => tokens.push(Token::comma(Location(index, index + 1))),
                 _ => (),
@@ -130,7 +138,8 @@ mod tests {
         let mut lexer = Lexer::new(
             "{
     \"name\": \"sato\",\
-    \"age\": 20
+    \"age\": 20,\
+    \"flag\": false\
 }",
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
@@ -143,7 +152,10 @@ mod tests {
             Token::string("age", Location(22, 25)),
             Token::colon(Location(26, 27)),
             Token::number("20", Location(29, 30)),
-            Token::close_brace(Location(31, 32)),
+            Token::string("flag", Location(32, 36)),
+            Token::colon(Location(37, 38)),
+            Token::boolean(false, Location(39, 43)),
+            Token::close_brace(Location(44, 45)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(
@@ -153,7 +165,7 @@ mod tests {
                 index,
             );
         }
-        assert_eq!(9, result.len(), "token配列長が想定外です。");
+        assert_eq!(12, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
