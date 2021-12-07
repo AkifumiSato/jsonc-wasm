@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn lexer_should_success_parse() {
         let mut lexer = Lexer::new(
-            "{'
+            "{
     \"name\": \"sato\",\
     \"age\": 20
 }",
@@ -114,14 +114,14 @@ mod tests {
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected = [
             Token::open_brace(Location(0, 1)),
-            Token::string("name", Location(8, 12)),
-            Token::colon(Location(13, 14)),
-            Token::string("sato", Location(16, 20)),
-            Token::comma(Location(21, 22)),
-            Token::string("age", Location(23, 26)),
-            Token::colon(Location(27, 28)),
-            Token::number("20", Location(30, 31)),
-            Token::close_brace(Location(32, 33)),
+            Token::string("name", Location(7, 11)),
+            Token::colon(Location(12, 13)),
+            Token::string("sato", Location(15, 19)),
+            Token::comma(Location(20, 21)),
+            Token::string("age", Location(22, 25)),
+            Token::colon(Location(26, 27)),
+            Token::number("20", Location(29, 30)),
+            Token::close_brace(Location(31, 32)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(
@@ -132,5 +132,27 @@ mod tests {
             );
         }
         assert_eq!(9, result.len(), "token配列長が想定外です。");
+    }
+
+    #[test]
+    fn parse_string_token_should_return_token() {
+        let mut lexer = Lexer::new("{\"name\": \"sato\"}");
+        // 最初の`"`まで進める
+        lexer.input.next();
+        lexer.input.next();
+        if let Ok(token) = lexer.parse_string_token() {
+            assert_eq!(Token::string("name", Location(2, 6)), token);
+        } else {
+            panic!("[parse_string_token]がErrを返しました。");
+        };
+    }
+
+    #[test]
+    fn parse_string_token_should_err() {
+        let mut lexer = Lexer::new("{\"name");
+        // 最初の`"`まで進める
+        lexer.input.next();
+        lexer.input.next();
+        assert!(lexer.parse_string_token().is_err());
     }
 }
