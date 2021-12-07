@@ -112,51 +112,25 @@ mod tests {
 }",
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
-        assert_eq!(
+        let expected = [
             Token::open_brace(Location(0, 1)),
-            result[0],
-            "tokenの0番目が想定外です。"
-        );
-        assert_eq!(
             Token::string("name", Location(8, 12)),
-            result[1],
-            "tokenの1番目が想定外です。"
-        );
-        assert_eq!(
             Token::colon(Location(13, 14)),
-            result[2],
-            "tokenの2番目が想定外です。"
-        );
-        assert_eq!(
             Token::string("sato", Location(16, 20)),
-            result[3],
-            "tokenの3番目が想定外です。"
-        );
-        assert_eq!(
             Token::comma(Location(21, 22)),
-            result[4],
-            "tokenの4番目が想定外です。"
-        );
-        assert_eq!(
             Token::string("age", Location(23, 26)),
-            result[5],
-            "tokenの5番目が想定外です。"
-        );
-        assert_eq!(
             Token::colon(Location(27, 28)),
-            result[6],
-            "tokenの6番目が想定外です。"
-        );
-        assert_eq!(
             Token::number("20", Location(30, 31)),
-            result[7],
-            "tokenの7番目が想定外です。"
-        );
-        assert_eq!(
             Token::close_brace(Location(32, 33)),
-            result[8],
-            "tokenの8番目が想定外です。"
-        );
+        ];
+        for (index, expect) in expected.iter().enumerate() {
+            assert_eq!(
+                expect,
+                &result[index],
+                "tokenの{}番目が想定外です。",
+                index,
+            );
+        }
         assert_eq!(9, result.len(), "token配列長が想定外です。");
     }
 }
