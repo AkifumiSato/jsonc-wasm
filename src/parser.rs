@@ -88,26 +88,25 @@ impl<'a> Lexer<'a> {
 
     fn parse_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token, LexerError> {
         let mut s = String::new();
-        let mut location: Location;
-        if expect_bool {
-            location = Location(index, index + 3);
+        let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
             s = "t".to_string() + &(0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
-            if s == "true" {
-                return Ok(Token::boolean(true, location));
-            };
+            (s, index + 3)
         } else {
-            location = Location(index, index + 4);
             // すでに最初の`f`は消費されている前提なので残り文字を精査
             s = "f".to_string() + &(0..4).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
-            if s == "false" {
-                return Ok(Token::boolean(false, location))
-            };
+            (s, index + 4)
         };
-        Err(LexerError::new(
-            LexerErrorKind::InvalidChars(s),
-            Some(location),
-        ))
+        let location = Location(index, end);
+        let s: &str = &s;
+        match s {
+            "true" => Ok(Token::boolean(true, location)),
+            "false" => Ok(Token::boolean(false, location)),
+            _ => Err(LexerError::new(
+                LexerErrorKind::InvalidChars(s.to_string()),
+                Some(location),
+            ))
+        }
     }
 }
 
