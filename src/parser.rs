@@ -92,34 +92,22 @@ impl<'a> Lexer<'a> {
         if expect_bool {
             location = Location(index, index + 3);
             // すでに最初の`t`は消費されている前提なので残り文字を精査
-            s = (0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
-            let result = if s == "rue" {
-                Ok(Token::boolean(true, location))
-            } else {
-                Err(LexerError::new(
-                    LexerErrorKind::InvalidChars("t".to_string()+ &s),
-                    Some(location),
-                ))
+            s = "t".to_string() + &(0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            if s == "true" {
+                return Ok(Token::boolean(true, location));
             };
-            return result
         } else {
             location = Location(index, index + 4);
             // すでに最初の`f`は消費されている前提なので残り文字を精査
-            s = (0..4).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
-            let result = if s == "alse" {
-                Ok(Token::boolean(false, location))
-            } else {
-                return Err(LexerError::new(
-                    LexerErrorKind::InvalidChars("f".to_string()+ &s),
-                    Some(location),
-                ))
+            s = "f".to_string() + &(0..4).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            if s == "false" {
+                return Ok(Token::boolean(false, location))
             };
-            return result
         };
-        // Err(LexerError::new(
-        //     LexerErrorKind::InvalidChars("t".to_string()+ &s),
-        //     None, // todo location
-        // ))
+        Err(LexerError::new(
+            LexerErrorKind::InvalidChars(s),
+            Some(location),
+        ))
     }
 }
 
