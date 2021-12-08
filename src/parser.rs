@@ -39,11 +39,11 @@ impl<'a> Lexer<'a> {
                 't' => {
                     let token = self.parse_bool_token(true, index)?;
                     tokens.push(token);
-                },
+                }
                 'f' => {
                     let token = self.parse_bool_token(false, index)?;
                     tokens.push(token);
-                },
+                }
                 'n' => {
                     let token = self.parse_null_token(index)?;
                     tokens.push(token);
@@ -96,11 +96,17 @@ impl<'a> Lexer<'a> {
         let mut s = String::new();
         let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
-            s = "t".to_string() + &(0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            s = "t".to_string()
+                + &(0..3)
+                    .filter_map(|_| self.input.next().map(|(index, c)| c))
+                    .collect::<String>();
             (s, index + 3)
         } else {
             // すでに最初の`f`は消費されている前提なので残り文字を精査
-            s = "f".to_string() + &(0..4).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+            s = "f".to_string()
+                + &(0..4)
+                    .filter_map(|_| self.input.next().map(|(index, c)| c))
+                    .collect::<String>();
             (s, index + 4)
         };
         let location = Location(index, end);
@@ -108,13 +114,16 @@ impl<'a> Lexer<'a> {
         match s {
             "true" => Ok(Token::boolean(true, location)),
             "false" => Ok(Token::boolean(false, location)),
-            _ => Err(LexerError::not_exist_terminal_symbol())
+            _ => Err(LexerError::not_exist_terminal_symbol()),
         }
     }
 
     fn parse_null_token(&mut self, index: usize) -> Result<Token, LexerError> {
         // `null`かどうか文字を取得
-        let s = "n".to_string() + &(0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+        let s = "n".to_string()
+            + &(0..3)
+                .filter_map(|_| self.input.next().map(|(index, c)| c))
+                .collect::<String>();
         let location = Location(index, index + 3);
         if s == "null" {
             Ok(Token::null(location))
@@ -169,12 +178,7 @@ mod tests {
             Token::close_brace(Location(58, 59)),
         ];
         for (index, expect) in expected.iter().enumerate() {
-            assert_eq!(
-                expect,
-                &result[index],
-                "tokenの{}番目が想定外です。",
-                index,
-            );
+            assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
         }
         assert_eq!(16, result.len(), "token配列長が想定外です。");
     }
