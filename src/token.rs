@@ -111,6 +111,10 @@ impl LexerError {
     pub fn invalid_chars(chars: String, location: Option<Location>) -> Self {
         Annotation::new(LexerErrorKind::InvalidChars(chars), location)
     }
+
+    pub fn not_exist_terminal_symbol() -> Self {
+        Annotation::new(LexerErrorKind::NotExistTerminalSymbol, None)
+    }
 }
 
 #[cfg(test)]

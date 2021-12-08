@@ -44,6 +44,10 @@ impl<'a> Lexer<'a> {
                     let token = self.parse_bool_token(false, index)?;
                     tokens.push(token);
                 },
+                'n' => {
+                    let token = self.parse_null_token(index)?;
+                    tokens.push(token);
+                }
                 ':' => tokens.push(Token::colon(Location(index, index + 1))),
                 ',' => tokens.push(Token::comma(Location(index, index + 1))),
                 _ => (),
@@ -68,10 +72,7 @@ impl<'a> Lexer<'a> {
                 } // todo escape文字列の処理
             }
         }
-        Err(LexerError::new(
-            LexerErrorKind::NotExistTerminalSymbol,
-            None,
-        ))
+        Err(LexerError::not_exist_terminal_symbol())
     }
 
     fn parse_number_token(&mut self, first: char) -> Result<Token, LexerError> {
@@ -88,10 +89,7 @@ impl<'a> Lexer<'a> {
                 return Ok(Token::number(&value, Location(start, index)));
             }
         }
-        Err(LexerError::new(
-            LexerErrorKind::NotExistTerminalSymbol,
-            None,
-        ))
+        Err(LexerError::not_exist_terminal_symbol())
     }
 
     fn parse_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token, LexerError> {
@@ -110,10 +108,18 @@ impl<'a> Lexer<'a> {
         match s {
             "true" => Ok(Token::boolean(true, location)),
             "false" => Ok(Token::boolean(false, location)),
-            _ => Err(LexerError::new(
-                LexerErrorKind::InvalidChars(s.to_string()),
-                Some(location),
-            ))
+            _ => Err(LexerError::not_exist_terminal_symbol())
+        }
+    }
+
+    fn parse_null_token(&mut self, index: usize) -> Result<Token, LexerError> {
+        // `null`かどうか文字を取得
+        let s = "n".to_string() + &(0..3).filter_map(|_| self.input.next().map(|(index, c)| c)).collect::<String>();
+        let location = Location(index, index + 3);
+        if s == "null" {
+            Ok(Token::null(location))
+        } else {
+            Err(LexerError::invalid_chars(s.to_string(), Some(location)))
         }
     }
 }
@@ -139,7 +145,8 @@ mod tests {
             "{
     \"name\": \"sato\",\
     \"age\": 20,\
-    \"flag\": false\
+    \"flag\": false,\
+    \"attr\": null
 }",
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
@@ -155,7 +162,11 @@ mod tests {
             Token::string("flag", Location(32, 36)),
             Token::colon(Location(37, 38)),
             Token::boolean(false, Location(39, 43)),
-            Token::close_brace(Location(44, 45)),
+            Token::comma(Location(44, 45)),
+            Token::string("attr", Location(46, 50)),
+            Token::colon(Location(51, 52)),
+            Token::null(Location(53, 56)),
+            Token::close_brace(Location(58, 59)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(
@@ -165,7 +176,7 @@ mod tests {
                 index,
             );
         }
-        assert_eq!(12, result.len(), "token配列長が想定外です。");
+        assert_eq!(16, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
@@ -246,7 +257,7 @@ mod tests {
         if let Ok(token) = lexer.parse_bool_token(false, index) {
             assert_eq!(Token::boolean(false, Location(1, 5)), token);
         } else {
-            panic!("[parse_string_token]がErrを返しました。");
+            panic!("[parse_bool_token]がErrを返しました。");
         };
     }
 
@@ -258,5 +269,29 @@ mod tests {
         lexer.input.next();
         let (index, _) = lexer.input.next().unwrap();
         assert!(lexer.parse_bool_token(false, index).is_err());
+    }
+
+    #[test]
+    fn parse_null_token_should_return_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":null,");
+        // 最初の`f`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        if let Ok(token) = lexer.parse_null_token(index) {
+            assert_eq!(Token::null(Location(1, 4)), token);
+        } else {
+            panic!("[parse_null_token]がErrを返しました。");
+        };
+    }
+
+    #[test]
+    fn parse_null_token_should_err() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(":nu");
+        // 最初の`n`まで進める
+        lexer.input.next();
+        let (index, _) = lexer.input.next().unwrap();
+        assert!(lexer.parse_null_token(index).is_err());
     }
 }
