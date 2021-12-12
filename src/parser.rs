@@ -66,10 +66,37 @@ impl<'a> Lexer<'a> {
                 '"' => {
                     return Ok(Token::string(&value, Location(index - times, index)));
                 }
+                '\\' => {
+                    let (_, c2) = self.input.next().ok_or(LexerError::not_exist_terminal_symbol())?;
+                    match c2 {
+                        'u' => {
+                            let hex = (0..4)
+                                .filter_map(|_| {
+                                    let c = self.input.next().map(|(index, c)| c)?;
+                                    if c.is_ascii_hexdigit() {
+                                        Some(c)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect::<String>();
+                            if hex.len() != 4 {
+                                return Err(LexerError::not_exist_terminal_symbol());
+                            }
+                            let code = u16::from_str_radix(&hex, 16).or_else(|e| Err(LexerError::not_exist_terminal_symbol()))?;
+                            let utf16_value = String::from_utf16(&[code]).or_else(|e| Err(LexerError::not_exist_terminal_symbol()))?;
+                            value.push_str(&utf16_value);
+                            times += 6;
+                            // todo 絵文字対応(6で固定しないように修正)
+                         },
+                        _ => panic!("[other]でした"),
+                    }
+                    // todo escape文字列の処理
+                }
                 _ => {
                     value.push(c);
                     times += 1;
-                } // todo escape文字列の処理
+                }
             }
         }
         Err(LexerError::not_exist_terminal_symbol())
@@ -185,15 +212,17 @@ mod tests {
 
     #[test]
     fn parse_string_token_should_return_token() {
-        // 部分的なテストのためのinvalid json
-        let mut lexer = Lexer::new("{name\"");
-        // `{`の分のみ進める
-        lexer.input.next();
-        if let Ok(token) = lexer.parse_string_token() {
-            assert_eq!(Token::string("name", Location(1, 5)), token);
-        } else {
-            panic!("[parse_string_token]がErrを返しました。");
-        };
+        let mut lexer = Lexer::new("name123\"");
+        let token = lexer.parse_string_token().expect("[parse_string_token_should_return_token]\"name\"のparseに失敗しました。");
+        assert_eq!(Token::string("name123", Location(0, 7)), token);
+
+        let mut lexer = Lexer::new("あいうえお\"");
+        let token = lexer.parse_string_token().expect("[parse_string_token_should_return_token]\"あいうえお\"のparseに失敗しました。");
+        assert_eq!(Token::string("あいうえお", Location(0, 5)), token);
+
+        let mut lexer = Lexer::new(r#"\u3042\u3044\u3046abc""#);
+        let token = lexer.parse_string_token().expect("[parse_string_token_should_return_token]\"あいうabc\"のparseに失敗しました。");
+        assert_eq!(Token::string("あいうabc", Location(0, 21)), token);
     }
 
     #[test]
