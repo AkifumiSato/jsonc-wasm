@@ -70,17 +70,8 @@ impl<'a> Lexer<'a> {
                     let (_, c2) = self.input.next().ok_or(LexerError::not_exist_terminal_symbol())?;
                     match c2 {
                         'u' => {
-                            let hex = (0..4)
-                                .filter_map(|_| {
-                                    let c = self.input.next().map(|(index, c)| c)?;
-                                    if c.is_ascii_hexdigit() {
-                                        Some(c)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect::<String>();
-                            if hex.len() != 4 {
+                            let hex = self.take_chars_with(4);
+                            if hex.len() != 4 && hex.parse::<f64>().is_ok() {
                                 return Err(LexerError::not_exist_terminal_symbol());
                             }
                             let code = u16::from_str_radix(&hex, 16).or_else(|e| Err(LexerError::not_exist_terminal_symbol()))?;
@@ -124,16 +115,12 @@ impl<'a> Lexer<'a> {
         let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
             s = "t".to_string()
-                + &(0..3)
-                    .filter_map(|_| self.input.next().map(|(index, c)| c))
-                    .collect::<String>();
+                + &self.take_chars_with(3);
             (s, index + 3)
         } else {
             // すでに最初の`f`は消費されている前提なので残り文字を精査
             s = "f".to_string()
-                + &(0..4)
-                    .filter_map(|_| self.input.next().map(|(index, c)| c))
-                    .collect::<String>();
+                + &self.take_chars_with(4);
             (s, index + 4)
         };
         let location = Location(index, end);
@@ -148,15 +135,20 @@ impl<'a> Lexer<'a> {
     fn parse_null_token(&mut self, index: usize) -> Result<Token, LexerError> {
         // `null`かどうか文字を取得
         let s = "n".to_string()
-            + &(0..3)
-                .filter_map(|_| self.input.next().map(|(index, c)| c))
-                .collect::<String>();
+            + &self.take_chars_with(3);
         let location = Location(index, index + 3);
         if s == "null" {
             Ok(Token::null(location))
         } else {
             Err(LexerError::invalid_chars(s.to_string(), Some(location)))
         }
+    }
+
+    fn take_chars_with(&mut self, times: i32) -> String {
+        let chars = (0..times)
+            .filter_map(|_| self.input.next().map(|(index, c)| c))
+            .collect::<String>();
+        chars
     }
 }
 
