@@ -60,7 +60,6 @@ impl<'a> Lexer<'a> {
     fn parse_string_token(&mut self) -> Result<Token, LexerError> {
         let mut value = String::new();
         let mut times = 0;
-        let mut utf16: Vec<u16> = vec![];
 
         while let Some((index, c)) = self.input.next() {
             match c {
@@ -78,34 +77,9 @@ impl<'a> Lexer<'a> {
                             if hex.len() != 4 && hex.parse::<f64>().is_ok() {
                                 return Err(LexerError::not_exist_terminal_symbol());
                             }
-                            let code = u16::from_str_radix(&hex, 16)
-                                .or_else(|e| Err(LexerError::not_exist_terminal_symbol()))?;
-                            utf16.push(code);
-
-                            let next_char = self.input.peek();
-                            match next_char {
-                                Some((_, c)) => {
-                                    // 次の文字もエスケープの場合は次回までバッファリングのみ
-                                    if c.clone() != '\\' {
-                                        let utf16_value =
-                                            String::from_utf16(&utf16).or_else(|e| {
-                                                Err(LexerError::not_exist_terminal_symbol())
-                                            })?;
-                                        value.push_str(&utf16_value);
-                                        utf16.clear();
-                                    }
-                                }
-                                None => {
-                                    let utf16_value = String::from_utf16(&utf16).or_else(|e| {
-                                        Err(LexerError::not_exist_terminal_symbol())
-                                    })?;
-                                    value.push_str(&utf16_value);
-                                    utf16.clear();
-                                }
-                            };
 
                             times += 6;
-                            // todo!("絵文字などの変換はしなくても良いかも。");
+                            value.push_str(&format!("\\u{}", hex));
                         }
                         _ => todo!("escape文字列の処理"),
                     }
@@ -243,13 +217,19 @@ mod tests {
         let token = lexer
             .parse_string_token()
             .expect("[parse_string_token_should_return_token]\"あいうabc\"のparseに失敗しました。");
-        assert_eq!(Token::string("あいうabc", Location(0, 21)), token);
+        assert_eq!(
+            Token::string("\\u3042\\u3044\\u3046abc", Location(0, 21)),
+            token
+        );
 
         let mut lexer = Lexer::new(r#"\ud83d\ude00\ud83d\udc4d""#);
         let token = lexer
             .parse_string_token()
             .expect("[parse_string_token_should_return_token]\"😀👍\"のparseに失敗しました。");
-        assert_eq!(Token::string("😀👍", Location(0, 24)), token);
+        assert_eq!(
+            Token::string("\\ud83d\\ude00\\ud83d\\udc4d", Location(0, 24)),
+            token
+        );
 
         let mut lexer = Lexer::new("😀👍\"");
         let token = lexer
