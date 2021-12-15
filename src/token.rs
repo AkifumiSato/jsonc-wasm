@@ -41,6 +41,7 @@ pub enum TokenKind {
     Comma,
     Colon,
     WhiteSpaces(i32), // Length
+    BreakLine,
 }
 
 pub type Token = Annotation<TokenKind>;
@@ -96,6 +97,10 @@ impl Token {
 
     pub fn white_spaces(length: i32, location: Location) -> Self {
         Self::new(TokenKind::WhiteSpaces(length), Some(location))
+    }
+
+    pub fn break_line(location: Location) -> Self {
+        Self::new(TokenKind::BreakLine, Some(location))
     }
 }
 

@@ -153,9 +153,6 @@ impl<'a> Lexer<'a> {
 
     fn parse_comment_token(&mut self) -> Result<Token, LexerError> {
         let (second_slash, next_char) = self.input.next().ok_or(LexerError::not_exist_terminal_symbol())?;
-        if next_char != '/' {
-            return Err(LexerError::not_exist_terminal_symbol())
-        }
         match next_char {
             '/' => {
                 let start = second_slash - 1;
@@ -170,6 +167,35 @@ impl<'a> Lexer<'a> {
                         value.push(c);
                         times += 1;
                     }
+                };
+            }
+            '*' => {
+                let start = second_slash - 1;
+                let mut value = String::new();
+                let mut asterisk_buffer = String::new();
+                let mut times = 0;
+                let mut prev_asterisk = false;
+                while let Some((index, c)) = self.input.next() {
+                    times += 1;
+                    match c {
+                        '*' => {
+                            prev_asterisk = true;
+                            asterisk_buffer.push(c);
+                        }
+                        '/' => {
+                            if prev_asterisk {
+                                return Ok(Token::comment_block(&value, Location(start, index)));
+                            }
+                        }
+                        _ => {
+                            if prev_asterisk {
+                                value.push_str(&asterisk_buffer);
+                                asterisk_buffer.clear();
+                            }
+                            prev_asterisk = false;
+                            value.push(c);
+                        }
+                    };
                 };
             }
             c => {
@@ -392,7 +418,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_comment_token_should_return_token() {
+    fn parse_comment_line_token_should_return_token() {
         // 部分的なテストのためのinvalid json
         let mut lexer = Lexer::new(",// comment \n}");
         // 最初の`/`まで進める
@@ -401,7 +427,28 @@ mod tests {
         if let Ok(token) = lexer.parse_comment_token() {
             assert_eq!(Token::comment_line(" comment ", Location(1, 12)), token);
         } else {
-            panic!("[parse_null_token]がErrを返しました。");
+            panic!("[parse_comment_token]がErrを返しました。");
+        };
+    }
+
+    #[test]
+    fn parse_comment_block_token_should_return_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(r#"/*
+**
+test comment
+**
+*/"#);
+        // 最初の`/`まで進める
+        lexer.input.next();
+        if let Ok(token) = lexer.parse_comment_token() {
+            assert_eq!(Token::comment_block(r#"
+**
+test comment
+**
+"#, Location(0, 23)), token);
+        } else {
+            panic!("[parse_comment_token]がErrを返しました。");
         };
     }
 
