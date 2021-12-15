@@ -51,7 +51,7 @@ impl<'a> Lexer<'a> {
                 ':' => tokens.push(Token::colon(Location(index, index + 1))),
                 ',' => tokens.push(Token::comma(Location(index, index + 1))),
                 '/' => {
-                    let token = self.parse_comment_line_token()?;
+                    let token = self.parse_comment_token()?;
                     tokens.push(token);
                 },
                 _ => (),
@@ -151,25 +151,31 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn parse_comment_line_token(&mut self) -> Result<Token, LexerError> {
-        //todo locationの作成
+    fn parse_comment_token(&mut self) -> Result<Token, LexerError> {
         let (second_slash, next_char) = self.input.next().ok_or(LexerError::not_exist_terminal_symbol())?;
         if next_char != '/' {
             return Err(LexerError::not_exist_terminal_symbol())
         }
-        let start = second_slash - 1;
-        let mut value = String::new();
-        let mut times = 0;
-        while let Some((index, c)) = self.input.peek() {
-            if c == &'\n' {
-                return Ok(Token::comment_line(&value, Location(start, *index)));
-            } else {
-                // peekしてるのでunwrap
-                let (_, c) = self.input.next().unwrap();
-                value.push(c);
-                times += 1;
+        match next_char {
+            '/' => {
+                let start = second_slash - 1;
+                let mut value = String::new();
+                let mut times = 0;
+                while let Some((index, c)) = self.input.peek() {
+                    if c == &'\n' {
+                        return Ok(Token::comment_line(&value, Location(start, *index)));
+                    } else {
+                        // peekしてるのでunwrap
+                        let (_, c) = self.input.next().unwrap();
+                        value.push(c);
+                        times += 1;
+                    }
+                };
             }
-        };
+            c => {
+                return Err(LexerError::invalid_chars(format!("/{}", c).to_string(), Some(Location(second_slash, second_slash + 1))))
+            }
+        }
         Err(LexerError::not_exist_terminal_symbol())
     }
 
@@ -386,13 +392,13 @@ mod tests {
     }
 
     #[test]
-    fn parse_comment_line_token_should_return_token() {
+    fn parse_comment_token_should_return_token() {
         // 部分的なテストのためのinvalid json
         let mut lexer = Lexer::new(",// comment \n}");
         // 最初の`/`まで進める
         lexer.input.next();
         lexer.input.next();
-        if let Ok(token) = lexer.parse_comment_line_token() {
+        if let Ok(token) = lexer.parse_comment_token() {
             assert_eq!(Token::comment_line(" comment ", Location(1, 12)), token);
         } else {
             panic!("[parse_null_token]がErrを返しました。");
