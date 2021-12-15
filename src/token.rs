@@ -103,6 +103,7 @@ impl Token {
 pub enum LexerErrorKind {
     InvalidChars(String),
     NotExistTerminalSymbol, // 終端記号が不在
+    NotEscapeString,
 }
 
 pub type LexerError = Annotation<LexerErrorKind>;
@@ -114,6 +115,10 @@ impl LexerError {
 
     pub fn not_exist_terminal_symbol() -> Self {
         Annotation::new(LexerErrorKind::NotExistTerminalSymbol, None)
+    }
+
+    pub fn not_escape_string() -> Self {
+        Annotation::new(LexerErrorKind::NotEscapeString, None)
     }
 }
 
