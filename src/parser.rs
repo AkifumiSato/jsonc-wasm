@@ -83,11 +83,11 @@ impl<'a> Lexer<'a> {
                         }
                         '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' => {
                             times += 2;
-                            value.push_str( &format!("\\{}", c2));
+                            value.push_str(&format!("\\{}", c2));
                         }
                         _ => {
                             return Err(LexerError::not_escape_string());
-                        },
+                        }
                     }
                 }
                 _ => {
@@ -246,7 +246,10 @@ mod tests {
         let token = lexer
             .parse_string_token()
             .expect(r#"[parse_string_token_should_return_token]"test\"\/\\\b\n\f\r\t""のparseに失敗しました。"#);
-        assert_eq!(Token::string(r#"test\"\/\\\b\n\f\r\t"#, Location(0, 20)), token);
+        assert_eq!(
+            Token::string(r#"test\"\/\\\b\n\f\r\t"#, Location(0, 20)),
+            token
+        );
     }
 
     #[test]
