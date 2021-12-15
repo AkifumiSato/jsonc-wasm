@@ -404,4 +404,12 @@ mod tests {
             panic!("[parse_null_token]がErrを返しました。");
         };
     }
+
+    #[test]
+    fn parse_comment_token_should_err() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new("/,");
+        lexer.input.next().unwrap();
+        assert!(lexer.parse_comment_token().is_err());
+    }
 }
