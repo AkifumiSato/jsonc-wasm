@@ -5,7 +5,7 @@ use std::str::Chars;
 
 use wasm_bindgen::prelude::*;
 
-use crate::token::{LexerError, LexerErrorKind, Location, Token};
+use crate::token::{LexerError, Location, Token};
 use crate::utils::is_number_token_char;
 
 struct Lexer<'a> {
@@ -111,7 +111,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn parse_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token, LexerError> {
-        let mut s = String::new();
+        let s: String;
         let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
             s = "t".to_string() + &self.take_chars_with(3);
@@ -122,8 +122,7 @@ impl<'a> Lexer<'a> {
             (s, index + 4)
         };
         let location = Location(index, end);
-        let s: &str = &s;
-        match s {
+        match &s as &str {
             "true" => Ok(Token::boolean(true, location)),
             "false" => Ok(Token::boolean(false, location)),
             _ => Err(LexerError::not_exist_terminal_symbol()),
@@ -143,7 +142,7 @@ impl<'a> Lexer<'a> {
 
     fn take_chars_with(&mut self, times: i32) -> String {
         let chars = (0..times)
-            .filter_map(|_| self.input.next().map(|(index, c)| c))
+            .filter_map(|_| self.input.next().map(|(_index, c)| c))
             .collect::<String>();
         chars
     }
