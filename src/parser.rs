@@ -81,6 +81,10 @@ impl<'a> Lexer<'a> {
                             times += 6;
                             value.push_str(&format!("\\u{}", hex));
                         }
+                        '"' => {
+                            times += 2;
+                            value.push_str( &format!("\\{}", c2));
+                        }
                         _ => todo!("escape文字列の処理"),
                     }
                 }
@@ -235,6 +239,12 @@ mod tests {
             .parse_string_token()
             .expect("[parse_string_token_should_return_token]\"😀👍\"のparseに失敗しました。");
         assert_eq!(Token::string("😀👍", Location(0, 2)), token);
+
+        let mut lexer = Lexer::new("test\\\"\"");
+        let token = lexer
+            .parse_string_token()
+            .expect("[parse_string_token_should_return_token]\"test\\\"\"のparseに失敗しました。");
+        assert_eq!(Token::string("test\\\"", Location(0, 6)), token);
     }
 
     #[test]
