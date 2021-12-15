@@ -108,14 +108,14 @@ impl<'a> Lexer<'a> {
         let mut times = 0;
         value.push(first);
 
-        // todo ここおそらくpeekじゃないと次の文字次第ではinvalidになりそう
-        while let Some((index, c)) = self.input.next() {
-            if is_number_token_char(c) {
+        while let Some((index, c)) = self.input.peek() {
+            if is_number_token_char(*c) {
+                let (_, c) = self.input.next().unwrap();
                 value.push(c);
                 times += 1;
             } else {
                 let start = index - times;
-                return Ok(Token::number(&value, Location(start, index)));
+                return Ok(Token::number(&value, Location(start, *index)));
             }
         }
         Err(LexerError::not_exist_terminal_symbol())
@@ -217,6 +217,7 @@ mod tests {
             Token::string("age", Location(22, 25)),
             Token::colon(Location(26, 27)),
             Token::number("20", Location(29, 30)),
+            Token::comma(Location(30, 31)),
             Token::string("flag", Location(32, 36)),
             Token::colon(Location(37, 38)),
             Token::boolean(false, Location(39, 43)),
@@ -230,7 +231,7 @@ mod tests {
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
         }
-        assert_eq!(17, result.len(), "token配列長が想定外です。");
+        assert_eq!(18, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
