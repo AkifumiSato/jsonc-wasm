@@ -50,6 +50,10 @@ impl<'a> Lexer<'a> {
                 }
                 ':' => tokens.push(Token::colon(Location(index, index + 1))),
                 ',' => tokens.push(Token::comma(Location(index, index + 1))),
+                '/' => {
+                    let token = self.parse_comment_line_token()?;
+                    tokens.push(token);
+                },
                 _ => (),
             };
         }
@@ -104,6 +108,7 @@ impl<'a> Lexer<'a> {
         let mut times = 0;
         value.push(first);
 
+        // todo ここおそらくpeekじゃないと次の文字次第ではinvalidになりそう
         while let Some((index, c)) = self.input.next() {
             if is_number_token_char(c) {
                 value.push(c);
@@ -146,6 +151,28 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    fn parse_comment_line_token(&mut self) -> Result<Token, LexerError> {
+        //todo locationの作成
+        let (second_slash, next_char) = self.input.next().ok_or(LexerError::not_exist_terminal_symbol())?;
+        if next_char != '/' {
+            return Err(LexerError::not_exist_terminal_symbol())
+        }
+        let start = second_slash - 1;
+        let mut value = String::new();
+        let mut times = 0;
+        while let Some((index, c)) = self.input.peek() {
+            if c == &'\n' {
+                return Ok(Token::comment_line(&value, Location(start, index.clone())));
+            } else {
+                // peekしてるのでunwrap
+                let (_, c) = self.input.next().unwrap();
+                value.push(c);
+                times += 1;
+            }
+        };
+        Err(LexerError::not_exist_terminal_symbol())
+    }
+
     fn take_chars_with(&mut self, times: i32) -> String {
         let chars = (0..times)
             .filter_map(|_| self.input.next().map(|(_index, c)| c))
@@ -177,6 +204,7 @@ mod tests {
     \"age\": 20,\
     \"flag\": false,\
     \"attr\": null
+    // test
 }",
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
@@ -196,12 +224,13 @@ mod tests {
             Token::string("attr", Location(46, 50)),
             Token::colon(Location(51, 52)),
             Token::null(Location(53, 56)),
-            Token::close_brace(Location(58, 59)),
+            Token::comment_line(" test", Location(62, 69)),
+            Token::close_brace(Location(70, 71)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
         }
-        assert_eq!(16, result.len(), "token配列長が想定外です。");
+        assert_eq!(17, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
@@ -353,5 +382,19 @@ mod tests {
         lexer.input.next();
         let (index, _) = lexer.input.next().unwrap();
         assert!(lexer.parse_null_token(index).is_err());
+    }
+
+    #[test]
+    fn parse_comment_line_token_should_return_token() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(",// comment \n}");
+        // 最初の`/`まで進める
+        lexer.input.next();
+        lexer.input.next();
+        if let Ok(token) = lexer.parse_comment_line_token() {
+            assert_eq!(Token::comment_line(" comment ", Location(1, 12)), token);
+        } else {
+            panic!("[parse_null_token]がErrを返しました。");
+        };
     }
 }
