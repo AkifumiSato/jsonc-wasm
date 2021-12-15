@@ -162,7 +162,7 @@ impl<'a> Lexer<'a> {
         let mut times = 0;
         while let Some((index, c)) = self.input.peek() {
             if c == &'\n' {
-                return Ok(Token::comment_line(&value, Location(start, index.clone())));
+                return Ok(Token::comment_line(&value, Location(start, *index)));
             } else {
                 // peekしてるのでunwrap
                 let (_, c) = self.input.next().unwrap();
