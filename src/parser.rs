@@ -68,12 +68,12 @@ impl<'a> Lexer<'a> {
 
     fn scan_string_token(&mut self) -> Result<Token, LexerError> {
         let mut value = String::new();
-        let mut times = 0;
+        let mut length = 1; // 最初の"で1
 
         while let Some((index, c)) = self.input.next() {
             match c {
                 '"' => {
-                    return Ok(Token::string(&value, Location(index - times, index)));
+                    return Ok(Token::string(&value, Location(index - length, index)));
                 }
                 '\\' => {
                     let (_, c2) = self
@@ -87,11 +87,11 @@ impl<'a> Lexer<'a> {
                                 return Err(LexerError::not_exist_terminal_symbol());
                             }
 
-                            times += 6;
+                            length += 6;
                             value.push_str(&format!("\\u{}", hex));
                         }
                         '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' => {
-                            times += 2;
+                            length += 2;
                             value.push_str(&format!("\\{}", c2));
                         }
                         _ => {
@@ -101,7 +101,7 @@ impl<'a> Lexer<'a> {
                 }
                 _ => {
                     value.push(c);
-                    times += 1;
+                    length += 1;
                 }
             }
         }
@@ -276,28 +276,28 @@ mod tests {
             Token::open_brace(Location(0, 0)),
             Token::break_line(Location(1, 1)),
             Token::white_spaces(4, Location(2, 5)),
-            Token::string("name", Location(7, 11)),
+            Token::string("name", Location(6, 11)),
             Token::colon(Location(12, 12)),
             Token::white_spaces(1, Location(13, 13)),
-            Token::string("sato", Location(15, 19)),
+            Token::string("sato", Location(14, 19)),
             Token::comma(Location(20, 20)),
             Token::break_line(Location(21, 21)),
             Token::white_spaces(4, Location(22, 25)),
-            Token::string("age", Location(27, 30)),
+            Token::string("age", Location(26, 30)),
             Token::colon(Location(31, 31)),
             Token::white_spaces(1, Location(32, 32)),
             Token::number("20", Location(34, 35)),
             Token::comma(Location(35, 35)),
             Token::break_line(Location(36, 36)),
             Token::white_spaces(4, Location(37, 40)),
-            Token::string("flag", Location(42, 46)),
+            Token::string("flag", Location(41, 46)),
             Token::colon(Location(47, 47)),
             Token::white_spaces(1, Location(48, 48)),
             Token::boolean(false, Location(49, 53)),
             Token::comma(Location(54, 54)),
             Token::break_line(Location(55, 55)),
             Token::white_spaces(4, Location(56, 59)),
-            Token::string("attr", Location(61, 65)),
+            Token::string("attr", Location(60, 65)),
             Token::colon(Location(66, 66)),
             Token::white_spaces(1, Location(67, 67)),
             Token::null(Location(68, 71)),
@@ -323,48 +323,60 @@ mod tests {
 
     #[test]
     fn scan_string_token_should_return_token() {
-        let mut lexer = Lexer::new("name123\"");
+        let mut lexer = Lexer::new(r#""name123""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"name\"のscanに失敗しました。");
-        assert_eq!(Token::string("name123", Location(0, 7)), token);
+        assert_eq!(Token::string("name123", Location(0, 8)), token);
 
-        let mut lexer = Lexer::new("あいうえお\"");
+        let mut lexer = Lexer::new(r#""あいうえお""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer.scan_string_token().expect(
             "[scan_string_token_should_return_token]\"あいうえお\"のscanに失敗しました。",
         );
-        assert_eq!(Token::string("あいうえお", Location(0, 5)), token);
+        assert_eq!(Token::string("あいうえお", Location(0, 6)), token);
 
-        let mut lexer = Lexer::new(r#"\u3042\u3044\u3046abc""#);
+        let mut lexer = Lexer::new(r#""\u3042\u3044\u3046abc""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"あいうabc\"のscanに失敗しました。");
         assert_eq!(
-            Token::string("\\u3042\\u3044\\u3046abc", Location(0, 21)),
+            Token::string("\\u3042\\u3044\\u3046abc", Location(0, 22)),
             token
         );
 
-        let mut lexer = Lexer::new(r#"\ud83d\ude00\ud83d\udc4d""#);
+        let mut lexer = Lexer::new(r#""\ud83d\ude00\ud83d\udc4d""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"😀👍\"のscanに失敗しました。");
         assert_eq!(
-            Token::string("\\ud83d\\ude00\\ud83d\\udc4d", Location(0, 24)),
+            Token::string("\\ud83d\\ude00\\ud83d\\udc4d", Location(0, 25)),
             token
         );
 
-        let mut lexer = Lexer::new("😀👍\"");
+        let mut lexer = Lexer::new(r#""😀👍""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"😀👍\"のscanに失敗しました。");
-        assert_eq!(Token::string("😀👍", Location(0, 2)), token);
+        assert_eq!(Token::string("😀👍", Location(0, 3)), token);
 
-        let mut lexer = Lexer::new(r#"test\"\/\\\b\n\f\r\t""#);
+        let mut lexer = Lexer::new(r#""test\"\/\\\b\n\f\r\t""#);
+        // 最初の"まで進める
+        lexer.input.next();
         let token = lexer
             .scan_string_token()
             .expect(r#"[scan_string_token_should_return_token]"test\"\/\\\b\n\f\r\t""のscanに失敗しました。"#);
         assert_eq!(
-            Token::string(r#"test\"\/\\\b\n\f\r\t"#, Location(0, 20)),
+            Token::string(r#"test\"\/\\\b\n\f\r\t"#, Location(0, 21)),
             token
         );
     }
