@@ -260,16 +260,16 @@ mod tests {
     #[test]
     fn lexer_should_success_scan() {
         let mut lexer = Lexer::new(
-            "{
-    \"name\": \"sato\",\
-    \"age\": 20,\
-    \"flag\": false,\
-    \"attr\": null
+            r#"{
+    "name": "sato",
+    "age": 20,
+    "flag": false,
+    "attr": null
     // line
-/**
- * block
- */
-}",
+    /**
+     * block
+     */
+}"#,
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected = [
@@ -281,37 +281,44 @@ mod tests {
             Token::white_spaces(1, Location(13, 14)),
             Token::string("sato", Location(15, 19)),
             Token::comma(Location(20, 21)),
-            Token::string("age", Location(22, 25)),
-            Token::colon(Location(26, 27)),
-            Token::white_spaces(1, Location(27, 28)),
-            Token::number("20", Location(29, 30)),
-            Token::comma(Location(30, 31)),
-            Token::string("flag", Location(32, 36)),
-            Token::colon(Location(37, 38)),
-            Token::white_spaces(1, Location(38, 39)),
-            Token::boolean(false, Location(39, 43)),
-            Token::comma(Location(44, 45)),
-            Token::string("attr", Location(46, 50)),
-            Token::colon(Location(51, 52)),
-            Token::white_spaces(1, Location(52, 53)),
-            Token::null(Location(53, 56)),
-            Token::break_line(Location(57, 58)),
-            Token::white_spaces(4, Location(58, 62)),
-            Token::comment_line(" line", Location(62, 69)),
-            Token::break_line(Location(69, 70)),
+            Token::break_line(Location(21, 22)),
+            Token::white_spaces(4, Location(22, 26)),
+            Token::string("age", Location(27, 30)),
+            Token::colon(Location(31, 32)),
+            Token::white_spaces(1, Location(32, 33)),
+            Token::number("20", Location(34, 35)),
+            Token::comma(Location(35, 36)),
+            Token::break_line(Location(36, 37)),
+            Token::white_spaces(4, Location(37, 41)),
+            Token::string("flag", Location(42, 46)),
+            Token::colon(Location(47, 48)),
+            Token::white_spaces(1, Location(48, 49)),
+            Token::boolean(false, Location(49, 53)),
+            Token::comma(Location(54, 55)),
+            Token::break_line(Location(55, 56)),
+            Token::white_spaces(4, Location(56, 60)),
+            Token::string("attr", Location(61, 65)),
+            Token::colon(Location(66, 67)),
+            Token::white_spaces(1, Location(67, 68)),
+            Token::null(Location(68, 71)),
+            Token::break_line(Location(72, 73)),
+            Token::white_spaces(4, Location(73, 77)),
+            Token::comment_line(" line", Location(77, 84)),
+            Token::break_line(Location(84, 85)),
+            Token::white_spaces(4, Location(85, 89)),
             Token::comment_block(
                 r#"*
- * block
- "#,
-                Location(70, 85),
+     * block
+     "#,
+                Location(89, 112),
             ),
-            Token::break_line(Location(86, 87)),
-            Token::close_brace(Location(87, 88)),
+            Token::break_line(Location(113, 114)),
+            Token::close_brace(Location(114, 115)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
         }
-        assert_eq!(29, result.len(), "token配列長が想定外です。");
+        assert_eq!(36, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
