@@ -224,10 +224,13 @@ impl<'a> Lexer<'a> {
                 ' ' => {
                     self.input.next().unwrap();
                     length += 1
-                },
+                }
                 _ => {
                     let index = *index;
-                    return Ok(Token::white_spaces(length as i32, Location(index - length, index - 1)))
+                    return Ok(Token::white_spaces(
+                        length as i32,
+                        Location(index - length, index - 1),
+                    ));
                 }
             }
         }
@@ -334,9 +337,9 @@ mod tests {
         let mut lexer = Lexer::new(r#""あいうえお""#);
         // 最初の"まで進める
         lexer.input.next();
-        let token = lexer.scan_string_token().expect(
-            "[scan_string_token_should_return_token]\"あいうえお\"のscanに失敗しました。",
-        );
+        let token = lexer
+            .scan_string_token()
+            .expect("[scan_string_token_should_return_token]\"あいうえお\"のscanに失敗しました。");
         assert_eq!(Token::string("あいうえお", Location(0, 6)), token);
 
         let mut lexer = Lexer::new(r#""\u3042\u3044\u3046abc""#);
