@@ -24,10 +24,10 @@ impl<'a> Lexer<'a> {
 
         while let Some((index, c)) = self.input.next() {
             match c {
-                '{' => tokens.push(Token::open_brace(Location(index, index + 1))),
-                '}' => tokens.push(Token::close_brace(Location(index, index + 1))),
-                '[' => tokens.push(Token::open_bracket(Location(index, index + 1))),
-                ']' => tokens.push(Token::close_bracket(Location(index, index + 1))),
+                '{' => tokens.push(Token::open_brace(Location(index, index))),
+                '}' => tokens.push(Token::close_brace(Location(index, index))),
+                '[' => tokens.push(Token::open_bracket(Location(index, index))),
+                ']' => tokens.push(Token::close_bracket(Location(index, index))),
                 '"' => {
                     let token = self.scan_string_token()?;
                     tokens.push(token);
@@ -48,8 +48,8 @@ impl<'a> Lexer<'a> {
                     let token = self.scan_null_token(index)?;
                     tokens.push(token);
                 }
-                ':' => tokens.push(Token::colon(Location(index, index + 1))),
-                ',' => tokens.push(Token::comma(Location(index, index + 1))),
+                ':' => tokens.push(Token::colon(Location(index, index))),
+                ',' => tokens.push(Token::comma(Location(index, index))),
                 '/' => {
                     let token = self.scan_comment_token()?;
                     tokens.push(token);
@@ -58,7 +58,7 @@ impl<'a> Lexer<'a> {
                     let token = self.scan_whitespaces()?;
                     tokens.push(token);
                 }
-                '\n' => tokens.push(Token::break_line(Location(index, index + 1))),
+                '\n' => tokens.push(Token::break_line(Location(index, index))),
                 _ => (),
             };
         }
@@ -273,38 +273,38 @@ mod tests {
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected = [
-            Token::open_brace(Location(0, 1)),
-            Token::break_line(Location(1, 2)),
+            Token::open_brace(Location(0, 0)),
+            Token::break_line(Location(1, 1)),
             Token::white_spaces(4, Location(2, 5)),
             Token::string("name", Location(7, 11)),
-            Token::colon(Location(12, 13)),
+            Token::colon(Location(12, 12)),
             Token::white_spaces(1, Location(13, 13)),
             Token::string("sato", Location(15, 19)),
-            Token::comma(Location(20, 21)),
-            Token::break_line(Location(21, 22)),
+            Token::comma(Location(20, 20)),
+            Token::break_line(Location(21, 21)),
             Token::white_spaces(4, Location(22, 25)),
             Token::string("age", Location(27, 30)),
-            Token::colon(Location(31, 32)),
+            Token::colon(Location(31, 31)),
             Token::white_spaces(1, Location(32, 32)),
             Token::number("20", Location(34, 35)),
-            Token::comma(Location(35, 36)),
-            Token::break_line(Location(36, 37)),
+            Token::comma(Location(35, 35)),
+            Token::break_line(Location(36, 36)),
             Token::white_spaces(4, Location(37, 40)),
             Token::string("flag", Location(42, 46)),
-            Token::colon(Location(47, 48)),
+            Token::colon(Location(47, 47)),
             Token::white_spaces(1, Location(48, 48)),
             Token::boolean(false, Location(49, 53)),
-            Token::comma(Location(54, 55)),
-            Token::break_line(Location(55, 56)),
+            Token::comma(Location(54, 54)),
+            Token::break_line(Location(55, 55)),
             Token::white_spaces(4, Location(56, 59)),
             Token::string("attr", Location(61, 65)),
-            Token::colon(Location(66, 67)),
+            Token::colon(Location(66, 66)),
             Token::white_spaces(1, Location(67, 67)),
             Token::null(Location(68, 71)),
-            Token::break_line(Location(72, 73)),
+            Token::break_line(Location(72, 72)),
             Token::white_spaces(4, Location(73, 76)),
             Token::comment_line(" line", Location(77, 84)),
-            Token::break_line(Location(84, 85)),
+            Token::break_line(Location(84, 84)),
             Token::white_spaces(4, Location(85, 88)),
             Token::comment_block(
                 r#"*
@@ -312,8 +312,8 @@ mod tests {
      "#,
                 Location(89, 112),
             ),
-            Token::break_line(Location(113, 114)),
-            Token::close_brace(Location(114, 115)),
+            Token::break_line(Location(113, 113)),
+            Token::close_brace(Location(114, 114)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
