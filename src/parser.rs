@@ -165,7 +165,6 @@ impl<'a> Lexer<'a> {
             '/' => {
                 let start = second_slash - 1;
                 let mut value = String::new();
-                let mut times = 0;
                 while let Some((index, c)) = self.input.peek() {
                     if c == &'\n' {
                         return Ok(Token::comment_line(&value, Location(start, *index)));
@@ -173,7 +172,6 @@ impl<'a> Lexer<'a> {
                         // peekしてるのでunwrap
                         let (_, c) = self.input.next().unwrap();
                         value.push(c);
-                        times += 1;
                     }
                 }
             }
@@ -181,10 +179,8 @@ impl<'a> Lexer<'a> {
                 let start = second_slash - 1;
                 let mut value = String::new();
                 let mut asterisk_buffer = String::new();
-                let mut times = 0;
                 let mut prev_asterisk = false;
                 while let Some((index, c)) = self.input.next() {
-                    times += 1;
                     match c {
                         '*' => {
                             prev_asterisk = true;
