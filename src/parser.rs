@@ -227,7 +227,7 @@ impl<'a> Lexer<'a> {
                 },
                 _ => {
                     let index = *index;
-                    return Ok(Token::white_spaces(length as i32, Location(index - length, index)))
+                    return Ok(Token::white_spaces(length as i32, Location(index - length, index - 1)))
                 }
             }
         }
@@ -275,37 +275,37 @@ mod tests {
         let expected = [
             Token::open_brace(Location(0, 1)),
             Token::break_line(Location(1, 2)),
-            Token::white_spaces(4, Location(2, 6)),
+            Token::white_spaces(4, Location(2, 5)),
             Token::string("name", Location(7, 11)),
             Token::colon(Location(12, 13)),
-            Token::white_spaces(1, Location(13, 14)),
+            Token::white_spaces(1, Location(13, 13)),
             Token::string("sato", Location(15, 19)),
             Token::comma(Location(20, 21)),
             Token::break_line(Location(21, 22)),
-            Token::white_spaces(4, Location(22, 26)),
+            Token::white_spaces(4, Location(22, 25)),
             Token::string("age", Location(27, 30)),
             Token::colon(Location(31, 32)),
-            Token::white_spaces(1, Location(32, 33)),
+            Token::white_spaces(1, Location(32, 32)),
             Token::number("20", Location(34, 35)),
             Token::comma(Location(35, 36)),
             Token::break_line(Location(36, 37)),
-            Token::white_spaces(4, Location(37, 41)),
+            Token::white_spaces(4, Location(37, 40)),
             Token::string("flag", Location(42, 46)),
             Token::colon(Location(47, 48)),
-            Token::white_spaces(1, Location(48, 49)),
+            Token::white_spaces(1, Location(48, 48)),
             Token::boolean(false, Location(49, 53)),
             Token::comma(Location(54, 55)),
             Token::break_line(Location(55, 56)),
-            Token::white_spaces(4, Location(56, 60)),
+            Token::white_spaces(4, Location(56, 59)),
             Token::string("attr", Location(61, 65)),
             Token::colon(Location(66, 67)),
-            Token::white_spaces(1, Location(67, 68)),
+            Token::white_spaces(1, Location(67, 67)),
             Token::null(Location(68, 71)),
             Token::break_line(Location(72, 73)),
-            Token::white_spaces(4, Location(73, 77)),
+            Token::white_spaces(4, Location(73, 76)),
             Token::comment_line(" line", Location(77, 84)),
             Token::break_line(Location(84, 85)),
-            Token::white_spaces(4, Location(85, 89)),
+            Token::white_spaces(4, Location(85, 88)),
             Token::comment_block(
                 r#"*
      * block
@@ -530,7 +530,7 @@ test comment
         // 最初の` `まで進める
         lexer.input.next();
         if let Ok(token) = lexer.scan_whitespaces() {
-            assert_eq!(Token::white_spaces(3, Location(0, 3)), token);
+            assert_eq!(Token::white_spaces(3, Location(0, 2)), token);
         } else {
             panic!("[scan_whitespaces]がErrを返しました。");
         };
