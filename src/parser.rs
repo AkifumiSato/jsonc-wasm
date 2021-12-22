@@ -1,8 +1,8 @@
 extern crate wasm_bindgen;
 
+use anyhow::Result;
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
-
 use wasm_bindgen::prelude::*;
 
 use crate::token::{LexerError, Location, Token};
@@ -19,7 +19,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>> {
         let mut tokens = vec![];
 
         while let Some((index, c)) = self.input.next() {
@@ -66,7 +66,7 @@ impl<'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    fn scan_string_token(&mut self) -> Result<Token, LexerError> {
+    fn scan_string_token(&mut self) -> Result<Token> {
         let mut value = String::new();
         let mut length = 1; // 最初の"で1
 
@@ -79,12 +79,12 @@ impl<'a> Lexer<'a> {
                     let (_, c2) = self
                         .input
                         .next()
-                        .ok_or(LexerError::not_exist_terminal_symbol())?;
+                        .ok_or(LexerError::NotExistTerminalSymbol)?;
                     match c2 {
                         'u' => {
                             let hex = self.take_chars_with(4);
                             if hex.len() != 4 && hex.parse::<f64>().is_ok() {
-                                return Err(LexerError::not_exist_terminal_symbol());
+                                return Err(LexerError::NotExistTerminalSymbol.into());
                             }
 
                             length += 6;
@@ -95,7 +95,7 @@ impl<'a> Lexer<'a> {
                             value.push_str(&format!("\\{}", c2));
                         }
                         _ => {
-                            return Err(LexerError::not_escape_string());
+                            return Err(LexerError::NotEscapeString.into());
                         }
                     }
                 }
@@ -105,10 +105,10 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-        Err(LexerError::not_exist_terminal_symbol())
+        Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_number_token(&mut self, first: char) -> Result<Token, LexerError> {
+    fn scan_number_token(&mut self, first: char) -> Result<Token> {
         let mut value = String::new();
         let mut times = 0;
         value.push(first);
@@ -123,10 +123,10 @@ impl<'a> Lexer<'a> {
                 return Ok(Token::number(&value, Location(start, *index)));
             }
         }
-        Err(LexerError::not_exist_terminal_symbol())
+        Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token, LexerError> {
+    fn scan_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token> {
         let s: String;
         let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
@@ -141,26 +141,26 @@ impl<'a> Lexer<'a> {
         match &s as &str {
             "true" => Ok(Token::boolean(true, location)),
             "false" => Ok(Token::boolean(false, location)),
-            _ => Err(LexerError::not_exist_terminal_symbol()),
+            _ => Err(LexerError::NotExistTerminalSymbol.into()),
         }
     }
 
-    fn scan_null_token(&mut self, index: usize) -> Result<Token, LexerError> {
+    fn scan_null_token(&mut self, index: usize) -> Result<Token> {
         // `null`かどうか文字を取得
         let s = "n".to_string() + &self.take_chars_with(3);
         let location = Location(index, index + 3);
         if s == "null" {
             Ok(Token::null(location))
         } else {
-            Err(LexerError::invalid_chars(s.to_string(), Some(location)))
+            Err(LexerError::InvalidChars(s.to_string(), location).into())
         }
     }
 
-    fn scan_comment_token(&mut self) -> Result<Token, LexerError> {
+    fn scan_comment_token(&mut self) -> Result<Token> {
         let (second_slash, next_char) = self
             .input
             .next()
-            .ok_or(LexerError::not_exist_terminal_symbol())?;
+            .ok_or(LexerError::NotExistTerminalSymbol)?;
         match next_char {
             '/' => {
                 let start = second_slash - 1;
@@ -203,16 +203,17 @@ impl<'a> Lexer<'a> {
                 }
             }
             c => {
-                return Err(LexerError::invalid_chars(
+                return Err(LexerError::InvalidChars(
                     format!("/{}", c).to_string(),
-                    Some(Location(second_slash, second_slash + 1)),
-                ))
+                    Location(second_slash, second_slash + 1),
+                )
+                .into())
             }
         }
-        Err(LexerError::not_exist_terminal_symbol())
+        Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_whitespaces(&mut self) -> Result<Token, LexerError> {
+    fn scan_whitespaces(&mut self) -> Result<Token> {
         let mut length: usize = 1; // 呼び出し時点で1
         while let Some((index, c)) = self.input.peek() {
             let c = *c;
@@ -230,7 +231,7 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-        Err(LexerError::not_exist_terminal_symbol())
+        Err(LexerError::NotExistTerminalSymbol.into())
     }
 
     fn take_chars_with(&mut self, times: i32) -> String {

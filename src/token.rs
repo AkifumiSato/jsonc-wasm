@@ -1,4 +1,5 @@
 use core::cmp::{max, min};
+use thiserror::Error;
 
 /// Location情報
 /// (start, end)で保持する
@@ -104,27 +105,14 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LexerErrorKind {
-    InvalidChars(String),
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum LexerError {
+    #[error("Invalid chars `{0}`")]
+    InvalidChars(String, Location),
+    #[error("Not exist terminal symbol char")]
     NotExistTerminalSymbol, // 終端記号が不在
+    #[error("Not escape string")]
     NotEscapeString,
-}
-
-pub type LexerError = Annotation<LexerErrorKind>;
-
-impl LexerError {
-    pub fn invalid_chars(chars: String, location: Option<Location>) -> Self {
-        Annotation::new(LexerErrorKind::InvalidChars(chars), location)
-    }
-
-    pub fn not_exist_terminal_symbol() -> Self {
-        Annotation::new(LexerErrorKind::NotExistTerminalSymbol, None)
-    }
-
-    pub fn not_escape_string() -> Self {
-        Annotation::new(LexerErrorKind::NotEscapeString, None)
-    }
 }
 
 #[cfg(test)]
