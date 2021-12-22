@@ -16,18 +16,6 @@ impl Location {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Annotation<T> {
-    pub value: T,
-    location: Option<Location>,
-}
-
-impl<T> Annotation<T> {
-    pub fn new(value: T, location: Option<Location>) -> Self {
-        Annotation { value, location }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     OpenBrace,    // `{`
     CloseBrace,   // `}`
@@ -43,66 +31,6 @@ pub enum TokenKind {
     Colon,
     WhiteSpaces(i32), // Length
     BreakLine,
-}
-
-pub type Token = Annotation<TokenKind>;
-
-impl Token {
-    pub fn open_brace(location: Location) -> Self {
-        Self::new(TokenKind::OpenBrace, Some(location))
-    }
-
-    pub fn close_brace(location: Location) -> Self {
-        Self::new(TokenKind::CloseBrace, Some(location))
-    }
-
-    pub fn open_bracket(location: Location) -> Self {
-        Self::new(TokenKind::OpenBracket, Some(location))
-    }
-
-    pub fn close_bracket(location: Location) -> Self {
-        Self::new(TokenKind::CloseBracket, Some(location))
-    }
-
-    pub fn string(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::StringValue(value.to_string()), Some(location))
-    }
-
-    pub fn number(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::Number(value.to_string()), Some(location))
-    }
-
-    pub fn boolean(value: bool, location: Location) -> Self {
-        Self::new(TokenKind::Boolean(value), Some(location))
-    }
-
-    pub fn null(location: Location) -> Self {
-        Self::new(TokenKind::Null, Some(location))
-    }
-
-    pub fn comment_line(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::CommentLine(value.to_string()), Some(location))
-    }
-
-    pub fn comment_block(value: &str, location: Location) -> Self {
-        Self::new(TokenKind::CommentBlock(value.to_string()), Some(location))
-    }
-
-    pub fn comma(location: Location) -> Self {
-        Self::new(TokenKind::Comma, Some(location))
-    }
-
-    pub fn colon(location: Location) -> Self {
-        Self::new(TokenKind::Colon, Some(location))
-    }
-
-    pub fn white_spaces(length: i32, location: Location) -> Self {
-        Self::new(TokenKind::WhiteSpaces(length), Some(location))
-    }
-
-    pub fn break_line(location: Location) -> Self {
-        Self::new(TokenKind::BreakLine, Some(location))
-    }
 }
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]

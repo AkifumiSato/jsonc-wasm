@@ -5,7 +5,7 @@ use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 use wasm_bindgen::prelude::*;
 
-use crate::token::{LexerError, Location, Token};
+use crate::token::{LexerError, Location, TokenKind};
 use crate::utils::is_number_token_char;
 
 struct Lexer<'a> {
@@ -19,15 +19,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>> {
+    pub fn tokenize(&mut self) -> Result<Vec<TokenKind>> {
         let mut tokens = vec![];
 
         while let Some((index, c)) = self.input.next() {
             match c {
-                '{' => tokens.push(Token::open_brace(Location(index, index))),
-                '}' => tokens.push(Token::close_brace(Location(index, index))),
-                '[' => tokens.push(Token::open_bracket(Location(index, index))),
-                ']' => tokens.push(Token::close_bracket(Location(index, index))),
+                '{' => tokens.push(TokenKind::OpenBrace),
+                '}' => tokens.push(TokenKind::CloseBrace),
+                '[' => tokens.push(TokenKind::OpenBracket),
+                ']' => tokens.push(TokenKind::CloseBracket),
                 '"' => {
                     let token = self.scan_string_token()?;
                     tokens.push(token);
@@ -48,8 +48,8 @@ impl<'a> Lexer<'a> {
                     let token = self.scan_null_token(index)?;
                     tokens.push(token);
                 }
-                ':' => tokens.push(Token::colon(Location(index, index))),
-                ',' => tokens.push(Token::comma(Location(index, index))),
+                ':' => tokens.push(TokenKind::Colon),
+                ',' => tokens.push(TokenKind::Comma),
                 '/' => {
                     let token = self.scan_comment_token()?;
                     tokens.push(token);
@@ -58,7 +58,7 @@ impl<'a> Lexer<'a> {
                     let token = self.scan_whitespaces()?;
                     tokens.push(token);
                 }
-                '\n' => tokens.push(Token::break_line(Location(index, index))),
+                '\n' => tokens.push(TokenKind::BreakLine),
                 _ => (),
             };
         }
@@ -66,14 +66,13 @@ impl<'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    fn scan_string_token(&mut self) -> Result<Token> {
+    fn scan_string_token(&mut self) -> Result<TokenKind> {
         let mut value = String::new();
-        let mut length = 1; // 最初の"で1
 
-        while let Some((index, c)) = self.input.next() {
+        while let Some((_index, c)) = self.input.next() {
             match c {
                 '"' => {
-                    return Ok(Token::string(&value, Location(index - length, index)));
+                    return Ok(TokenKind::StringValue(value));
                 }
                 '\\' => {
                     let (_, c2) = self
@@ -87,11 +86,9 @@ impl<'a> Lexer<'a> {
                                 return Err(LexerError::NotExistTerminalSymbol.into());
                             }
 
-                            length += 6;
                             value.push_str(&format!("\\u{}", hex));
                         }
                         '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' => {
-                            length += 2;
                             value.push_str(&format!("\\{}", c2));
                         }
                         _ => {
@@ -101,32 +98,28 @@ impl<'a> Lexer<'a> {
                 }
                 _ => {
                     value.push(c);
-                    length += 1;
                 }
             }
         }
         Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_number_token(&mut self, first: char) -> Result<Token> {
+    fn scan_number_token(&mut self, first: char) -> Result<TokenKind> {
         let mut value = String::new();
-        let mut times = 0;
         value.push(first);
 
-        while let Some((index, c)) = self.input.peek() {
+        while let Some((_index, c)) = self.input.peek() {
             if is_number_token_char(*c) {
                 let (_, c) = self.input.next().unwrap();
                 value.push(c);
-                times += 1;
             } else {
-                let start = index - times;
-                return Ok(Token::number(&value, Location(start, *index)));
+                return Ok(TokenKind::Number(value));
             }
         }
         Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<Token> {
+    fn scan_bool_token(&mut self, expect_bool: bool, index: usize) -> Result<TokenKind> {
         let s: String;
         let (s, end) = if expect_bool {
             // すでに最初の`t`は消費されている前提なので残り文字を精査
@@ -139,35 +132,34 @@ impl<'a> Lexer<'a> {
         };
         let location = Location(index, end);
         match &s as &str {
-            "true" => Ok(Token::boolean(true, location)),
-            "false" => Ok(Token::boolean(false, location)),
-            _ => Err(LexerError::NotExistTerminalSymbol.into()),
+            "true" => Ok(TokenKind::Boolean(true)),
+            "false" => Ok(TokenKind::Boolean(false)),
+            other => Err(LexerError::InvalidChars(other.to_string(), location).into()),
         }
     }
 
-    fn scan_null_token(&mut self, index: usize) -> Result<Token> {
+    fn scan_null_token(&mut self, index: usize) -> Result<TokenKind> {
         // `null`かどうか文字を取得
         let s = "n".to_string() + &self.take_chars_with(3);
         let location = Location(index, index + 3);
         if s == "null" {
-            Ok(Token::null(location))
+            Ok(TokenKind::Null)
         } else {
             Err(LexerError::InvalidChars(s.to_string(), location).into())
         }
     }
 
-    fn scan_comment_token(&mut self) -> Result<Token> {
+    fn scan_comment_token(&mut self) -> Result<TokenKind> {
         let (second_slash, next_char) = self
             .input
             .next()
             .ok_or(LexerError::NotExistTerminalSymbol)?;
         match next_char {
             '/' => {
-                let start = second_slash - 1;
                 let mut value = String::new();
-                while let Some((index, c)) = self.input.peek() {
+                while let Some((_index, c)) = self.input.peek() {
                     if c == &'\n' {
-                        return Ok(Token::comment_line(&value, Location(start, *index)));
+                        return Ok(TokenKind::CommentLine(value));
                     } else {
                         // peekしてるのでunwrap
                         let (_, c) = self.input.next().unwrap();
@@ -176,11 +168,10 @@ impl<'a> Lexer<'a> {
                 }
             }
             '*' => {
-                let start = second_slash - 1;
                 let mut value = String::new();
                 let mut asterisk_buffer = String::new();
                 let mut prev_asterisk = false;
-                while let Some((index, c)) = self.input.next() {
+                while let Some((_index, c)) = self.input.next() {
                     match c {
                         '*' => {
                             prev_asterisk = true;
@@ -188,7 +179,7 @@ impl<'a> Lexer<'a> {
                         }
                         '/' => {
                             if prev_asterisk {
-                                return Ok(Token::comment_block(&value, Location(start, index)));
+                                return Ok(TokenKind::CommentBlock(value));
                             }
                         }
                         _ => {
@@ -213,9 +204,9 @@ impl<'a> Lexer<'a> {
         Err(LexerError::NotExistTerminalSymbol.into())
     }
 
-    fn scan_whitespaces(&mut self) -> Result<Token> {
+    fn scan_whitespaces(&mut self) -> Result<TokenKind> {
         let mut length: usize = 1; // 呼び出し時点で1
-        while let Some((index, c)) = self.input.peek() {
+        while let Some((_index, c)) = self.input.peek() {
             let c = *c;
             match c {
                 ' ' => {
@@ -223,10 +214,8 @@ impl<'a> Lexer<'a> {
                     length += 1
                 }
                 _ => {
-                    let index = *index;
-                    return Ok(Token::white_spaces(
+                    return Ok(TokenKind::WhiteSpaces(
                         length as i32,
-                        Location(index - length, index - 1),
                     ));
                 }
             }
@@ -251,6 +240,7 @@ pub fn greet(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token::TokenKind;
 
     #[test]
     fn greet_name() {
@@ -273,47 +263,44 @@ mod tests {
         );
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected = [
-            Token::open_brace(Location(0, 0)),
-            Token::break_line(Location(1, 1)),
-            Token::white_spaces(4, Location(2, 5)),
-            Token::string("name", Location(6, 11)),
-            Token::colon(Location(12, 12)),
-            Token::white_spaces(1, Location(13, 13)),
-            Token::string("sato", Location(14, 19)),
-            Token::comma(Location(20, 20)),
-            Token::break_line(Location(21, 21)),
-            Token::white_spaces(4, Location(22, 25)),
-            Token::string("age", Location(26, 30)),
-            Token::colon(Location(31, 31)),
-            Token::white_spaces(1, Location(32, 32)),
-            Token::number("20", Location(34, 35)),
-            Token::comma(Location(35, 35)),
-            Token::break_line(Location(36, 36)),
-            Token::white_spaces(4, Location(37, 40)),
-            Token::string("flag", Location(41, 46)),
-            Token::colon(Location(47, 47)),
-            Token::white_spaces(1, Location(48, 48)),
-            Token::boolean(false, Location(49, 53)),
-            Token::comma(Location(54, 54)),
-            Token::break_line(Location(55, 55)),
-            Token::white_spaces(4, Location(56, 59)),
-            Token::string("attr", Location(60, 65)),
-            Token::colon(Location(66, 66)),
-            Token::white_spaces(1, Location(67, 67)),
-            Token::null(Location(68, 71)),
-            Token::break_line(Location(72, 72)),
-            Token::white_spaces(4, Location(73, 76)),
-            Token::comment_line(" line", Location(77, 84)),
-            Token::break_line(Location(84, 84)),
-            Token::white_spaces(4, Location(85, 88)),
-            Token::comment_block(
-                r#"*
+            TokenKind::OpenBrace,
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::StringValue("name".to_string()),
+            TokenKind::Colon,
+            TokenKind::WhiteSpaces(1),
+            TokenKind::StringValue("sato".to_string()),
+            TokenKind::Comma,
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::StringValue("age".to_string()),
+            TokenKind::Colon,
+            TokenKind::WhiteSpaces(1),
+            TokenKind::Number("20".to_string()),
+            TokenKind::Comma,
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::StringValue("flag".to_string()),
+            TokenKind::Colon,
+            TokenKind::WhiteSpaces(1),
+            TokenKind::Boolean(false),
+            TokenKind::Comma,
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::StringValue("attr".to_string()),
+            TokenKind::Colon,
+            TokenKind::WhiteSpaces(1),
+            TokenKind::Null,
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::CommentLine(" line".to_string()),
+            TokenKind::BreakLine,
+            TokenKind::WhiteSpaces(4),
+            TokenKind::CommentBlock(r#"*
      * block
-     "#,
-                Location(89, 112),
-            ),
-            Token::break_line(Location(113, 113)),
-            Token::close_brace(Location(114, 114)),
+     "#.to_string()),
+            TokenKind::BreakLine,
+            TokenKind::CloseBrace,
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
@@ -329,7 +316,7 @@ mod tests {
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"name\"のscanに失敗しました。");
-        assert_eq!(Token::string("name123", Location(0, 8)), token);
+        assert_eq!(TokenKind::StringValue("name123".to_string()), token);
 
         let mut lexer = Lexer::new(r#""あいうえお""#);
         // 最初の"まで進める
@@ -337,7 +324,7 @@ mod tests {
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"あいうえお\"のscanに失敗しました。");
-        assert_eq!(Token::string("あいうえお", Location(0, 6)), token);
+        assert_eq!(TokenKind::StringValue("あいうえお".to_string()), token);
 
         let mut lexer = Lexer::new(r#""\u3042\u3044\u3046abc""#);
         // 最初の"まで進める
@@ -346,7 +333,7 @@ mod tests {
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"あいうabc\"のscanに失敗しました。");
         assert_eq!(
-            Token::string("\\u3042\\u3044\\u3046abc", Location(0, 22)),
+            TokenKind::StringValue("\\u3042\\u3044\\u3046abc".to_string()),
             token
         );
 
@@ -357,7 +344,7 @@ mod tests {
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"😀👍\"のscanに失敗しました。");
         assert_eq!(
-            Token::string("\\ud83d\\ude00\\ud83d\\udc4d", Location(0, 25)),
+            TokenKind::StringValue("\\ud83d\\ude00\\ud83d\\udc4d".to_string()),
             token
         );
 
@@ -367,7 +354,7 @@ mod tests {
         let token = lexer
             .scan_string_token()
             .expect("[scan_string_token_should_return_token]\"😀👍\"のscanに失敗しました。");
-        assert_eq!(Token::string("😀👍", Location(0, 3)), token);
+        assert_eq!(TokenKind::StringValue("😀👍".to_string()), token);
 
         let mut lexer = Lexer::new(r#""test\"\/\\\b\n\f\r\t""#);
         // 最初の"まで進める
@@ -376,7 +363,7 @@ mod tests {
             .scan_string_token()
             .expect(r#"[scan_string_token_should_return_token]"test\"\/\\\b\n\f\r\t""のscanに失敗しました。"#);
         assert_eq!(
-            Token::string(r#"test\"\/\\\b\n\f\r\t"#, Location(0, 21)),
+            TokenKind::StringValue(r#"test\"\/\\\b\n\f\r\t"#.to_string()),
             token
         );
     }
@@ -396,7 +383,7 @@ mod tests {
         lexer.input.next();
         let (_, first) = lexer.input.next().unwrap();
         if let Ok(token) = lexer.scan_number_token(first) {
-            assert_eq!(Token::number("100", Location(2, 4)), token);
+            assert_eq!(TokenKind::Number("100".to_string()), token);
         } else {
             panic!("[scan_string_token]がErrを返しました。");
         };
@@ -420,7 +407,7 @@ mod tests {
         lexer.input.next();
         let (index, _) = lexer.input.next().unwrap();
         if let Ok(token) = lexer.scan_bool_token(true, index) {
-            assert_eq!(Token::boolean(true, Location(1, 4)), token);
+            assert_eq!(TokenKind::Boolean(true), token);
         } else {
             panic!("[scan_string_token]がErrを返しました。");
         };
@@ -444,7 +431,7 @@ mod tests {
         lexer.input.next();
         let (index, _) = lexer.input.next().unwrap();
         if let Ok(token) = lexer.scan_bool_token(false, index) {
-            assert_eq!(Token::boolean(false, Location(1, 5)), token);
+            assert_eq!(TokenKind::Boolean(false), token);
         } else {
             panic!("[scan_bool_token]がErrを返しました。");
         };
@@ -468,7 +455,7 @@ mod tests {
         lexer.input.next();
         let (index, _) = lexer.input.next().unwrap();
         if let Ok(token) = lexer.scan_null_token(index) {
-            assert_eq!(Token::null(Location(1, 4)), token);
+            assert_eq!(TokenKind::Null, token);
         } else {
             panic!("[scan_null_token]がErrを返しました。");
         };
@@ -492,7 +479,7 @@ mod tests {
         lexer.input.next();
         lexer.input.next();
         if let Ok(token) = lexer.scan_comment_token() {
-            assert_eq!(Token::comment_line(" comment ", Location(1, 12)), token);
+            assert_eq!(TokenKind::CommentLine(" comment ".to_string()), token);
         } else {
             panic!("[scan_comment_token]がErrを返しました。");
         };
@@ -512,13 +499,12 @@ test comment
         lexer.input.next();
         if let Ok(token) = lexer.scan_comment_token() {
             assert_eq!(
-                Token::comment_block(
+                TokenKind::CommentBlock(
                     r#"
 **
 test comment
 **
-"#,
-                    Location(0, 23)
+"#.to_string()
                 ),
                 token
             );
@@ -542,7 +528,7 @@ test comment
         // 最初の` `まで進める
         lexer.input.next();
         if let Ok(token) = lexer.scan_whitespaces() {
-            assert_eq!(Token::white_spaces(3, Location(0, 2)), token);
+            assert_eq!(TokenKind::WhiteSpaces(3), token);
         } else {
             panic!("[scan_whitespaces]がErrを返しました。");
         };
