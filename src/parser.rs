@@ -58,7 +58,7 @@ impl<'a> Lexer<'a> {
                     let token = self.scan_whitespaces()?;
                     tokens.push(token);
                 }
-                // todo break(\n\r)
+                '\n' => tokens.push(Token::break_line(Location(index, index + 1))),
                 _ => (),
             };
         }
@@ -274,6 +274,7 @@ mod tests {
         let result = lexer.tokenize().expect("lexerは配列を返します。");
         let expected = [
             Token::open_brace(Location(0, 1)),
+            Token::break_line(Location(1, 2)),
             Token::white_spaces(4, Location(2, 6)),
             Token::string("name", Location(7, 11)),
             Token::colon(Location(12, 13)),
@@ -294,20 +295,23 @@ mod tests {
             Token::colon(Location(51, 52)),
             Token::white_spaces(1, Location(52, 53)),
             Token::null(Location(53, 56)),
+            Token::break_line(Location(57, 58)),
             Token::white_spaces(4, Location(58, 62)),
             Token::comment_line(" line", Location(62, 69)),
+            Token::break_line(Location(69, 70)),
             Token::comment_block(
                 r#"*
  * block
  "#,
                 Location(70, 85),
             ),
+            Token::break_line(Location(86, 87)),
             Token::close_brace(Location(87, 88)),
         ];
         for (index, expect) in expected.iter().enumerate() {
             assert_eq!(expect, &result[index], "tokenの{}番目が想定外です。", index,);
         }
-        assert_eq!(25, result.len(), "token配列長が想定外です。");
+        assert_eq!(29, result.len(), "token配列長が想定外です。");
     }
 
     #[test]
@@ -521,7 +525,15 @@ test comment
         if let Ok(token) = lexer.scan_whitespaces() {
             assert_eq!(Token::white_spaces(3, Location(0, 3)), token);
         } else {
-            panic!("[scan_comment_token]がErrを返しました。");
+            panic!("[scan_whitespaces]がErrを返しました。");
         };
+    }
+
+    #[test]
+    fn scan_whitespaces_token_should_err() {
+        // 部分的なテストのためのinvalid json
+        let mut lexer = Lexer::new(r#"  "#);
+        lexer.input.next().unwrap();
+        assert!(lexer.scan_whitespaces().is_err());
     }
 }
