@@ -1,7 +1,7 @@
 use crate::token::Token;
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use std::collections::HashMap;
-use std::iter::{Enumerate, Peekable};
+use std::iter::Peekable;
 use std::slice::Iter;
 use thiserror::Error;
 
@@ -19,6 +19,8 @@ pub enum Node {
 pub enum ParseError {
     #[error("Not found token")]
     NotFoundToken,
+    #[error("Unexpected Token")]
+    UnexpectedToken,
 }
 
 struct Parser<'a> {
@@ -35,14 +37,24 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<Node> {
         let token = self.tokens.next().ok_or(ParseError::NotFoundToken)?.clone();
         match token {
-            Token::StringValue(value) => Ok(Node::StringValue(value)),
-            Token::Number(value) => Ok(Node::Number(value)),
-            Token::Boolean(value) => Ok(Node::Boolean(value)),
-            Token::Null => Ok(Node::Null),
+            Token::StringValue(value) => self.check_single_token_or(Node::StringValue(value)),
+            Token::Number(value) => self.check_single_token_or(Node::Number(value)),
+            Token::Boolean(value) => self.check_single_token_or(Node::Boolean(value)),
+            Token::Null => self.check_single_token_or(Node::Null),
             Token::OpenBrace => todo!("Object parse"),
             Token::OpenBracket => todo!("Array parse"),
             _ => todo!("他値のParse"),
         }
+        // todo 単一の値の時にTokenの長さが1であるチェックが必要
+    }
+
+    fn check_single_token_or(&mut self, node: Node) -> Result<Node> {
+        // if self.tokens.next().is_none() {
+        //     return Ok(node);
+        // }
+        // Err(ParseError::UnexpectedToken.into())
+        ensure!(self.tokens.next().is_none(), ParseError::UnexpectedToken);
+        Ok(node)
     }
 }
 
@@ -61,14 +73,8 @@ mod tests {
                 vec![Token::Number("100".to_string())],
                 Node::Number("100".to_string()),
             ),
-            (
-                vec![Token::Boolean(true)],
-                Node::Boolean(true),
-            ),
-            (
-                vec![Token::Null],
-                Node::Null,
-            ),
+            (vec![Token::Boolean(true)], Node::Boolean(true)),
+            (vec![Token::Null], Node::Null),
         ];
         for (data, expect) in data_expect_list.iter() {
             let mut parser = Parser::new(data);
@@ -77,5 +83,21 @@ mod tests {
                 .expect("[parse_single_value]Parseに失敗しました。");
             assert_eq!(*expect, result)
         }
+    }
+
+    #[test]
+    fn parse_single_value_error() {
+        let data = vec![
+            Token::StringValue("test".to_string()),
+            Token::StringValue("test".to_string()),
+        ];
+        let mut parser = Parser::new(&data);
+        let result = parser.parse();
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert_eq!(
+            ParseError::UnexpectedToken,
+            *err.downcast_ref::<ParseError>().unwrap()
+        )
     }
 }
