@@ -36,6 +36,11 @@ impl<'a> Parser<'a> {
         let token = self.tokens.next().ok_or(ParseError::NotFoundToken)?.clone();
         match token {
             Token::StringValue(value) => Ok(Node::StringValue(value)),
+            Token::Number(value) => Ok(Node::Number(value)),
+            Token::Boolean(value) => Ok(Node::Boolean(value)),
+            Token::Null => Ok(Node::Null),
+            Token::OpenBrace => todo!("Object parse"),
+            Token::OpenBracket => todo!("Array parse"),
             _ => todo!("他値のParse"),
         }
     }
@@ -46,10 +51,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_string() {
-        let data = vec![Token::StringValue("test".to_string())];
-        let mut parser = Parser::new(&data);
-        let result = parser.parse().expect("[parse_string]Parseに失敗しました。");
-        assert_eq!(Node::StringValue("test".to_string()), result)
+    fn parse_single_value() {
+        let data_expect_list = vec![
+            (
+                vec![Token::StringValue("test".to_string())],
+                Node::StringValue("test".to_string()),
+            ),
+            (
+                vec![Token::Number("100".to_string())],
+                Node::Number("100".to_string()),
+            ),
+            (
+                vec![Token::Boolean(true)],
+                Node::Boolean(true),
+            ),
+            (
+                vec![Token::Null],
+                Node::Null,
+            ),
+        ];
+        for (data, expect) in data_expect_list.iter() {
+            let mut parser = Parser::new(data);
+            let result = parser
+                .parse()
+                .expect("[parse_single_value]Parseに失敗しました。");
+            assert_eq!(*expect, result)
+        }
     }
 }
