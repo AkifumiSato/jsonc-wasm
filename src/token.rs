@@ -16,7 +16,7 @@ impl Location {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TokenKind {
+pub enum Token {
     OpenBrace,    // `{`
     CloseBrace,   // `}`
     OpenBracket,  // `[`
