@@ -214,9 +214,7 @@ impl<'a> Lexer<'a> {
                     length += 1
                 }
                 _ => {
-                    return Ok(Token::WhiteSpaces(
-                        length as i32,
-                    ));
+                    return Ok(Token::WhiteSpaces(length as i32));
                 }
             }
         }
@@ -296,9 +294,12 @@ mod tests {
             Token::CommentLine(" line".to_string()),
             Token::BreakLine,
             Token::WhiteSpaces(4),
-            Token::CommentBlock(r#"*
+            Token::CommentBlock(
+                r#"*
      * block
-     "#.to_string()),
+     "#
+                .to_string(),
+            ),
             Token::BreakLine,
             Token::CloseBrace,
         ];
@@ -504,7 +505,8 @@ test comment
 **
 test comment
 **
-"#.to_string()
+"#
+                    .to_string()
                 ),
                 token
             );
