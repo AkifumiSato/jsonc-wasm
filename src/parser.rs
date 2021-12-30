@@ -36,25 +36,17 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self) -> Result<Node> {
         let token = self.tokens.next().ok_or(ParseError::NotFoundToken)?.clone();
-        match token {
-            Token::StringValue(value) => self.check_single_token_or(Node::StringValue(value)),
-            Token::Number(value) => self.check_single_token_or(Node::Number(value)),
-            Token::Boolean(value) => self.check_single_token_or(Node::Boolean(value)),
-            Token::Null => self.check_single_token_or(Node::Null),
+        let result = match token {
+            Token::StringValue(value) => Node::StringValue(value),
+            Token::Number(value) => Node::Number(value),
+            Token::Boolean(value) => Node::Boolean(value),
+            Token::Null => Node::Null,
             Token::OpenBrace => todo!("Object parse"),
             Token::OpenBracket => todo!("Array parse"),
             _ => todo!("他値のParse"),
-        }
-        // todo 単一の値の時にTokenの長さが1であるチェックが必要
-    }
-
-    fn check_single_token_or(&mut self, node: Node) -> Result<Node> {
-        // if self.tokens.next().is_none() {
-        //     return Ok(node);
-        // }
-        // Err(ParseError::UnexpectedToken.into())
+        };
         ensure!(self.tokens.next().is_none(), ParseError::UnexpectedToken);
-        Ok(node)
+        Ok(result)
     }
 }
 
