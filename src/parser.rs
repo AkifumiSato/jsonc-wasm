@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
             Token::Null => Node::Null,
             Token::OpenBrace => todo!("Object parse"),
             Token::OpenBracket => todo!("Array parse"),
-            _ => todo!("他値のParse"),
+            _ => return self.parse(),
         };
         ensure!(self.tokens.next().is_none(), ParseError::UnexpectedToken);
         Ok(result)
@@ -63,6 +63,10 @@ mod tests {
             ),
             (
                 vec![Token::Number("100".to_string())],
+                Node::Number("100".to_string()),
+            ),
+            (
+                vec![Token::BreakLine, Token::Number("100".to_string())],
                 Node::Number("100".to_string()),
             ),
             (vec![Token::Boolean(true)], Node::Boolean(true)),
