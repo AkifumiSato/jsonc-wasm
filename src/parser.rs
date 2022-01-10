@@ -91,6 +91,8 @@ impl<'a> Parser<'a> {
             match token {
                 Token::BreakLine => { /* skip */ }
                 Token::WhiteSpaces(_) => { /* skip */ }
+                Token::CommentBlock(_) => { /* skip */ }
+                Token::CommentLine(_) => { /* skip */ }
                 _ => return Some(token.clone()),
             };
         }
@@ -226,6 +228,20 @@ mod tests {
             Token::Comma,
             Token::CloseBrace,
         ];
+        assert_parse_err(data, ParseError::UnexpectedToken);
+    }
+
+    #[test]
+    fn parse_object_value_no_value() {
+        let data = vec![
+            Token::OpenBrace,
+            Token::BreakLine,
+            Token::WhiteSpaces(4),
+            Token::StringValue("name".to_string()),
+            Token::Colon,
+            Token::CloseBrace,
+        ];
+
         assert_parse_err(data, ParseError::UnexpectedToken);
     }
 }
