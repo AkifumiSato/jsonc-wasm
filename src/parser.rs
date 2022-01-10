@@ -39,21 +39,30 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<Node> {
-        let token = self.next_grammar().ok_or(ParseError::NotFoundToken)?;
-        let result = match token {
-            Token::StringValue(value) => Node::StringValue(value),
-            Token::Number(value) => Node::Number(value),
-            Token::Boolean(value) => Node::Boolean(value),
-            Token::Null => Node::Null,
-            Token::OpenBrace => self.parse_object()?,
-            Token::OpenBracket => todo!("Array parse"),
-            _ => return self.parse(),
-        };
+        if self.tokens.len() == 0 {
+            return Err(ParseError::NotFoundToken.into());
+        }
+        let result = self.parse_value()?;
         ensure!(self.next_grammar().is_none(), ParseError::UnexpectedToken);
         Ok(result)
     }
 
-    fn parse_object(&mut self) -> Result<Node> {;
+    fn parse_value(&mut self) -> Result<Node> {
+        let token = self
+            .next_grammar()
+            .ok_or(ParseError::UnexpectedConsumedUpToken)?;
+        match token {
+            Token::StringValue(value) => Ok(Node::StringValue(value)),
+            Token::Number(value) => Ok(Node::Number(value)),
+            Token::Boolean(value) => Ok(Node::Boolean(value)),
+            Token::Null => Ok(Node::Null),
+            Token::OpenBrace => self.parse_object(),
+            Token::OpenBracket => todo!("Array parse"),
+            _ => Err(ParseError::UnexpectedToken.into()),
+        }
+    }
+
+    fn parse_object(&mut self) -> Result<Node> {
         let mut member = HashMap::new();
         loop {
             let mut first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
@@ -65,22 +74,13 @@ impl<'a> Parser<'a> {
                 first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
             };
 
-            match (first_token, self.next_grammar(), self.next_grammar()) {
-                (Token::StringValue(key), Some(Token::Colon), Some(token)) => {
-                    let node = match token {
-                        Token::StringValue(value) => Node::StringValue(value),
-                        Token::Number(value) => Node::Number(value),
-                        Token::Boolean(value) => Node::Boolean(value),
-                        Token::Null => Node::Null,
-                        Token::OpenBrace => self.parse_object()?,
-                        Token::OpenBracket => todo!("Array parse"),
-                        _ => unreachable!(),
-                    };
+            match (first_token, self.next_grammar(), self.parse_value()?) {
+                (Token::StringValue(key), Some(Token::Colon), node) => {
                     member.insert(key, node);
-                },
+                }
                 _ => return Err(ParseError::UnexpectedConsumedUpToken.into()),
             }
-        };
+        }
         Ok(Node::Object(member))
     }
 
@@ -89,11 +89,11 @@ impl<'a> Parser<'a> {
         // todo nextするのかどうか、検討の余地あり
         while let Some(token) = self.tokens.next() {
             match token {
-                Token::BreakLine => {/* skip */},
-                Token::WhiteSpaces(_) => {/* skip */},
+                Token::BreakLine => { /* skip */ }
+                Token::WhiteSpaces(_) => { /* skip */ }
                 _ => return Some(token.clone()),
             };
-        };
+        }
         None
     }
 }
@@ -113,6 +113,14 @@ mod tests {
         }
     }
 
+    fn assert_parse_err(data: Vec<Token>, expect: ParseError) {
+        let mut parser = Parser::new(&data);
+        let result = parser.parse();
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        assert_eq!(expect, *err.downcast_ref::<ParseError>().unwrap());
+    }
+
     #[test]
     fn parse_single_value() {
         let data_expect_list = vec![
@@ -125,7 +133,11 @@ mod tests {
                 Node::Number("100".to_string()),
             ),
             (
-                vec![Token::BreakLine, Token::Number("100".to_string()), Token::WhiteSpaces(4)],
+                vec![
+                    Token::BreakLine,
+                    Token::Number("100".to_string()),
+                    Token::WhiteSpaces(4),
+                ],
                 Node::Number("100".to_string()),
             ),
             (vec![Token::Boolean(true)], Node::Boolean(true)),
@@ -135,49 +147,85 @@ mod tests {
     }
 
     #[test]
-    fn parse_single_value_error() {
-        let data = vec![
-            Token::StringValue("test".to_string()),
-            Token::StringValue("test".to_string()),
-        ];
+    fn parse_single_value_no_token_error() {
+        let data = vec![];
         let mut parser = Parser::new(&data);
         let result = parser.parse();
         assert!(result.is_err());
         let err = result.err().unwrap();
         assert_eq!(
-            ParseError::UnexpectedToken,
+            ParseError::NotFoundToken,
             *err.downcast_ref::<ParseError>().unwrap()
         )
     }
 
     #[test]
-    fn parse_object_value() {
-        let data_expect_list = vec![
-            (
-                vec![
-                    Token::OpenBrace,
-                    Token::BreakLine,
-                    Token::WhiteSpaces(4),
-                    Token::StringValue("name".to_string()),
-                    Token::Colon,
-                    Token::WhiteSpaces(1),
-                    Token::StringValue("sato".to_string()),
-                    Token::Comma,
-                    Token::BreakLine,
-                    Token::WhiteSpaces(4),
-                    Token::StringValue("age".to_string()),
-                    Token::Colon,
-                    Token::WhiteSpaces(1),
-                    Token::Number("20".to_string()),
-                    Token::BreakLine,
-                    Token::CloseBrace,
-                ],
-                Node::Object(HashMap::from([
-                    ("name".to_string(), Node::StringValue("sato".to_string())),
-                    ("age".to_string(), Node::Number("20".to_string())),
-                ])),
-            ),
+    fn parse_single_value_error() {
+        let data = vec![
+            Token::StringValue("test".to_string()),
+            Token::StringValue("test".to_string()),
         ];
+        assert_parse_err(data, ParseError::UnexpectedToken);
+    }
+
+    #[test]
+    fn parse_object_value() {
+        let data_expect_list = vec![(
+            vec![
+                Token::OpenBrace,
+                Token::BreakLine,
+                Token::WhiteSpaces(4),
+                Token::StringValue("name".to_string()),
+                Token::Colon,
+                Token::WhiteSpaces(1),
+                Token::StringValue("sato".to_string()),
+                Token::Comma,
+                Token::BreakLine,
+                Token::WhiteSpaces(4),
+                Token::StringValue("age".to_string()),
+                Token::Colon,
+                Token::WhiteSpaces(1),
+                Token::Number("20".to_string()),
+                Token::BreakLine,
+                Token::CloseBrace,
+            ],
+            Node::Object(HashMap::from([
+                ("name".to_string(), Node::StringValue("sato".to_string())),
+                ("age".to_string(), Node::Number("20".to_string())),
+            ])),
+        )];
         assert_parse(data_expect_list);
+    }
+
+    #[test]
+    fn parse_object_value_not_closed() {
+        let data = vec![
+            Token::OpenBrace,
+            Token::BreakLine,
+            Token::WhiteSpaces(4),
+            Token::StringValue("name".to_string()),
+            Token::Colon,
+            Token::WhiteSpaces(1),
+            Token::StringValue("sato".to_string()),
+            Token::BreakLine,
+            // Token::CloseBrace,
+        ];
+        assert_parse_err(data, ParseError::UnClosedToken);
+    }
+
+    #[test]
+    fn parse_object_value_invalid() {
+        let data = vec![
+            Token::OpenBrace,
+            Token::BreakLine,
+            Token::WhiteSpaces(4),
+            // Token::StringValue("name".to_string()),
+            Token::Colon,
+            Token::WhiteSpaces(1),
+            Token::StringValue("sato".to_string()),
+            Token::Comma,
+            Token::CloseBrace,
+        ];
+        assert_parse_err(data, ParseError::UnexpectedToken);
     }
 }
