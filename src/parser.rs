@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<Node> {
-        let token = self.tokens.next().ok_or(ParseError::NotFoundToken)?.clone();
+        let token = self.next_grammar().ok_or(ParseError::NotFoundToken)?;
         let result = match token {
             Token::StringValue(value) => Node::StringValue(value),
             Token::Number(value) => Node::Number(value),
@@ -45,8 +45,19 @@ impl<'a> Parser<'a> {
             Token::OpenBracket => todo!("Array parse"),
             _ => return self.parse(),
         };
-        ensure!(self.tokens.next().is_none(), ParseError::UnexpectedToken);
+        ensure!(self.next_grammar().is_none(), ParseError::UnexpectedToken);
         Ok(result)
+    }
+
+    fn next_grammar(&mut self) -> Option<Token> {
+        while let Some(token) = self.tokens.next() {
+            match token {
+                Token::BreakLine => {/* skip */},
+                Token::WhiteSpaces(_) => {/* skip */},
+                _ => return Some(token.clone()),
+            };
+        };
+        None
     }
 }
 
@@ -66,7 +77,7 @@ mod tests {
                 Node::Number("100".to_string()),
             ),
             (
-                vec![Token::BreakLine, Token::Number("100".to_string())],
+                vec![Token::BreakLine, Token::Number("100".to_string()), Token::WhiteSpaces(4)],
                 Node::Number("100".to_string()),
             ),
             (vec![Token::Boolean(true)], Node::Boolean(true)),
@@ -74,10 +85,11 @@ mod tests {
         ];
         for (data, expect) in data_expect_list.iter() {
             let mut parser = Parser::new(data);
-            let result = parser
-                .parse()
-                .expect("[parse_single_value]Parseに失敗しました。");
-            assert_eq!(*expect, result)
+            let result = parser.parse();
+            match result {
+                Ok(node) => assert_eq!(*expect, node),
+                Err(e) => panic!("{}", e),
+            }
         }
     }
 
