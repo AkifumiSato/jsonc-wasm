@@ -172,30 +172,53 @@ mod tests {
 
     #[test]
     fn parse_object_value() {
-        let data_expect_list = vec![(
-            vec![
-                Token::OpenBrace,
-                Token::BreakLine,
-                Token::WhiteSpaces(4),
-                Token::StringValue("name".to_string()),
-                Token::Colon,
-                Token::WhiteSpaces(1),
-                Token::StringValue("sato".to_string()),
-                Token::Comma,
-                Token::BreakLine,
-                Token::WhiteSpaces(4),
-                Token::StringValue("age".to_string()),
-                Token::Colon,
-                Token::WhiteSpaces(1),
-                Token::Number("20".to_string()),
-                Token::BreakLine,
-                Token::CloseBrace,
-            ],
-            Node::Object(HashMap::from([
-                ("name".to_string(), Node::StringValue("sato".to_string())),
-                ("age".to_string(), Node::Number("20".to_string())),
-            ])),
-        )];
+        let data_expect_list = vec![
+            (
+                vec![
+                    Token::OpenBrace,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::StringValue("name".to_string()),
+                    Token::Colon,
+                    Token::WhiteSpaces(1),
+                    Token::StringValue("sato".to_string()),
+                    Token::Comma,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::StringValue("age".to_string()),
+                    Token::Colon,
+                    Token::WhiteSpaces(1),
+                    Token::Number("20".to_string()),
+                    Token::BreakLine,
+                    Token::CloseBrace,
+                ],
+                Node::Object(HashMap::from([
+                    ("name".to_string(), Node::StringValue("sato".to_string())),
+                    ("age".to_string(), Node::Number("20".to_string())),
+                ])),
+            ),
+            (
+                vec![
+                    Token::OpenBrace,
+                    Token::StringValue("user".to_string()),
+                    Token::Colon,
+                    Token::WhiteSpaces(1),
+                    Token::OpenBrace,
+                    Token::StringValue("name".to_string()),
+                    Token::Colon,
+                    Token::StringValue("sato".to_string()),
+                    Token::CloseBrace,
+                    Token::CloseBrace,
+                ],
+                Node::Object(HashMap::from([(
+                    "user".to_string(),
+                    Node::Object(HashMap::from([(
+                        "name".to_string(),
+                        Node::StringValue("sato".to_string()),
+                    )])),
+                )])),
+            ),
+        ];
         assert_parse(data_expect_list);
     }
 
