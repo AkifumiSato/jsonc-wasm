@@ -25,6 +25,8 @@ pub enum ParseError {
     UnexpectedConsumedUpToken,
     #[error("Un closed Token")]
     UnClosedToken,
+    #[error("Lack comma")]
+    LackComma,
 }
 
 struct Parser<'a> {
@@ -57,7 +59,7 @@ impl<'a> Parser<'a> {
             Token::Boolean(value) => Ok(Node::Boolean(value)),
             Token::Null => Ok(Node::Null),
             Token::OpenBrace => self.parse_object(),
-            Token::OpenBracket => todo!("Array parse"),
+            Token::OpenBracket => self.parse_array(),
             _ => Err(ParseError::UnexpectedToken.into()),
         }
     }
@@ -67,7 +69,6 @@ impl<'a> Parser<'a> {
         loop {
             let mut first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
             if first_token == Token::CloseBrace {
-                println!("[debug] end");
                 // closeでないならkey stringのみ
                 break;
             } else if first_token == Token::Comma {
@@ -82,6 +83,37 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(Node::Object(member))
+    }
+
+    fn parse_array(&mut self) -> Result<Node> {
+        let mut times = 0;
+        let mut result = vec![];
+        loop {
+            let mut token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+            if token == Token::CloseBracket {
+                // closeでないならvalueのみ
+                break;
+            } else if times != 0 {
+                if token != Token::Comma {
+                    return Err(ParseError::LackComma.into());
+                }
+                // commaの次のTokenを取得
+                token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+            };
+
+            times += 1;
+
+            match token {
+                Token::StringValue(value) => result.push(Node::StringValue(value)),
+                Token::Number(value) => result.push(Node::Number(value)),
+                Token::Boolean(value) => result.push(Node::Boolean(value)),
+                Token::Null => result.push(Node::Null),
+                Token::OpenBrace => result.push(self.parse_object()?),
+                Token::OpenBracket => result.push(self.parse_array()?),
+                _ => return Err(ParseError::UnexpectedToken.into()),
+            }
+        }
+        Ok(Node::Array(result))
     }
 
     /// 次のgrammarまで読み飛ばす
@@ -266,5 +298,46 @@ mod tests {
         ];
 
         assert_parse_err(data, ParseError::UnexpectedToken);
+    }
+
+    #[test]
+    fn parse_array_value() {
+        let data_expect_list = vec![(
+            // tuple case
+            vec![
+                Token::OpenBracket,
+                Token::BreakLine,
+                Token::WhiteSpaces(4),
+                Token::StringValue("hoge".to_string()),
+                Token::Comma,
+                Token::BreakLine,
+                Token::WhiteSpaces(4),
+                Token::Number("999".to_string()),
+                Token::Comma,
+                Token::BreakLine,
+                Token::WhiteSpaces(4),
+                Token::OpenBrace,
+                Token::StringValue("name".to_string()),
+                Token::Colon,
+                Token::StringValue("sato".to_string()),
+                Token::CloseBrace,
+                Token::Comma,
+                Token::BreakLine,
+                Token::OpenBracket,
+                Token::Number("123".to_string()),
+                Token::CloseBracket,
+                Token::CloseBracket,
+            ],
+            Node::Array(vec![
+                Node::StringValue("hoge".to_string()),
+                Node::Number("999".to_string()),
+                Node::Object(HashMap::from([(
+                    "name".to_string(),
+                    Node::StringValue("sato".to_string()),
+                )])),
+                Node::Array(vec![Node::Number("123".to_string())]),
+            ]),
+        )];
+        assert_parse(data_expect_list);
     }
 }
