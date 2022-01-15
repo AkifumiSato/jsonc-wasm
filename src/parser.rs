@@ -19,8 +19,8 @@ pub enum Node {
 pub enum ParseError {
     #[error("Not found token")]
     NotFoundToken,
-    #[error("Unexpected Token")]
-    UnexpectedToken,
+    #[error("Unexpected Token: `{0}`")]
+    UnexpectedToken(String),
     #[error("Unexpected consumed up Token")]
     UnexpectedConsumedUpToken,
     #[error("Un closed Token")]
@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
             return Err(ParseError::NotFoundToken.into());
         }
         let result = self.parse_value()?;
-        ensure!(self.next_grammar().is_none(), ParseError::UnexpectedToken);
+        ensure!(self.next_grammar().is_none(), ParseError::UnexpectedToken("contains multiple values".to_string()));
         Ok(result)
     }
 
@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
             Token::Null => Ok(Node::Null),
             Token::OpenBrace => self.parse_object(),
             Token::OpenBracket => self.parse_array(),
-            _ => Err(ParseError::UnexpectedToken.into()),
+            _ => Err(ParseError::UnexpectedToken("contains a token other than the value".to_string()).into()),
         }
     }
 
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
                 Token::Null => result.push(Node::Null),
                 Token::OpenBrace => result.push(self.parse_object()?),
                 Token::OpenBracket => result.push(self.parse_array()?),
-                _ => return Err(ParseError::UnexpectedToken.into()),
+                _ => return Err(ParseError::UnexpectedToken("found an unexpected token while parsing the array".to_string()).into()),
             }
         }
         Ok(Node::Array(result))
@@ -199,7 +199,7 @@ mod tests {
             Token::StringValue("test".to_string()),
             Token::StringValue("test".to_string()),
         ];
-        assert_parse_err(data, ParseError::UnexpectedToken);
+        assert_parse_err(data, ParseError::UnexpectedToken("contains multiple values".to_string()));
     }
 
     #[test]
@@ -283,7 +283,7 @@ mod tests {
             Token::Comma,
             Token::CloseBrace,
         ];
-        assert_parse_err(data, ParseError::UnexpectedToken);
+        assert_parse_err(data, ParseError::UnexpectedToken("contains a token other than the value".to_string()));
     }
 
     #[test]
@@ -297,7 +297,7 @@ mod tests {
             Token::CloseBrace,
         ];
 
-        assert_parse_err(data, ParseError::UnexpectedToken);
+        assert_parse_err(data, ParseError::UnexpectedToken("contains a token other than the value".to_string()));
     }
 
     #[test]
