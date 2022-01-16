@@ -65,22 +65,46 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_object(&mut self) -> Result<Node> {
+        let mut times = 0;
         let mut member = HashMap::new();
         loop {
-            let mut first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
-            if first_token == Token::CloseBrace {
-                // closeでないならkey stringのみ
-                break;
-            } else if first_token == Token::Comma {
-                first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+            // close,comma,stringのいづれか
+            let first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+            match first_token {
+                Token::CloseBrace => break, // ループを終了
+                Token::Comma => {
+                    // 0回目の時はcommaはなし
+                    if times == 0 {
+                        return Err(ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()).into());
+                    };
+                },
+                Token::StringValue(_) => { }, // key tokenはstringのみ許容 https://www.rfc-editor.org/rfc/rfc8259#section-4
+                _ => {
+                    return Err(ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()).into());
+                }
             };
 
-            match (first_token, self.next_grammar(), self.parse_value()?) {
+            let key_token = if times == 0 {
+                // string確定
+                first_token
+            } else {
+                self.next_grammar().ok_or(ParseError::UnClosedToken)?
+            };
+
+            if key_token == Token::CloseBrace {
+                // trailing comma
+                break;
+            }
+
+            // todo 末尾カンマ除去をしようとするとnext_grammarの振る舞いが厄介なので再検討
+            match (key_token, self.next_grammar(), self.parse_value()?) {
                 (Token::StringValue(key), Some(Token::Colon), node) => {
                     member.insert(key, node);
                 }
                 _ => return Err(ParseError::UnexpectedConsumedUpToken.into()),
             }
+
+            times += 1;
         }
         Ok(Node::Object(member))
     }
@@ -142,7 +166,7 @@ mod tests {
             let result = parser.parse();
             match result {
                 Ok(node) => assert_eq!(*expect, node),
-                Err(e) => panic!("{}", e),
+                Err(e) => panic!("[assert_parse]: {}", e),
             }
         }
     }
@@ -205,6 +229,7 @@ mod tests {
     #[test]
     fn parse_object_value() {
         let data_expect_list = vec![
+            // flat object
             (
                 vec![
                     Token::OpenBrace,
@@ -229,6 +254,7 @@ mod tests {
                     ("age".to_string(), Node::Number("20".to_string())),
                 ])),
             ),
+            // nested
             (
                 vec![
                     Token::OpenBrace,
@@ -248,6 +274,22 @@ mod tests {
                         "name".to_string(),
                         Node::StringValue("sato".to_string()),
                     )])),
+                )])),
+            ),
+            // trailing comma
+            (
+                vec![
+                    Token::OpenBrace,
+                    Token::StringValue("name".to_string()),
+                    Token::Colon,
+                    Token::WhiteSpaces(1),
+                    Token::StringValue("sato".to_string()),
+                    Token::Comma,
+                    Token::CloseBrace,
+                ],
+                Node::Object(HashMap::from([(
+                    "name".to_string(),
+                    Node::StringValue("sato".to_string()),
                 )])),
             ),
         ];
@@ -283,7 +325,7 @@ mod tests {
             Token::Comma,
             Token::CloseBrace,
         ];
-        assert_parse_err(data, ParseError::UnexpectedToken("contains a token other than the value".to_string()));
+        assert_parse_err(data, ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()));
     }
 
     #[test]
