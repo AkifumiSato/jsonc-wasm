@@ -45,7 +45,10 @@ impl<'a> Parser<'a> {
             return Err(ParseError::NotFoundToken.into());
         }
         let result = self.parse_value()?;
-        ensure!(self.next_grammar().is_none(), ParseError::UnexpectedToken("contains multiple values".to_string()));
+        ensure!(
+            self.next_grammar().is_none(),
+            ParseError::UnexpectedToken("contains multiple values".to_string())
+        );
         Ok(result)
     }
 
@@ -60,7 +63,10 @@ impl<'a> Parser<'a> {
             Token::Null => Ok(Node::Null),
             Token::OpenBrace => self.parse_object(),
             Token::OpenBracket => self.parse_array(),
-            _ => Err(ParseError::UnexpectedToken("contains a token other than the value".to_string()).into()),
+            _ => Err(ParseError::UnexpectedToken(
+                "contains a token other than the value".to_string(),
+            )
+            .into()),
         }
     }
 
@@ -70,35 +76,43 @@ impl<'a> Parser<'a> {
         loop {
             // close,comma,stringのいづれか
             let first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
-            match first_token {
+            let key = match first_token {
                 Token::CloseBrace => break, // ループを終了
                 Token::Comma => {
                     // 0回目の時はcommaはなし
                     if times == 0 {
-                        return Err(ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()).into());
-                    };
-                },
-                Token::StringValue(_) => { }, // key tokenはstringのみ許容 https://www.rfc-editor.org/rfc/rfc8259#section-4
+                        return Err(ParseError::UnexpectedToken(
+                            "first comma is not allowed".to_string(),
+                        )
+                        .into());
+                    } else {
+                        let token = self.next_grammar().ok_or(ParseError::UnexpectedToken(
+                            "found a Token that cannot be a key".to_string(),
+                        ))?;
+                        match token {
+                            Token::CloseBrace => break, // ループを終了
+                            Token::StringValue(key) => key,
+                            _ => {
+                                return Err(ParseError::UnexpectedToken(
+                                    "found a Token that cannot be a key".to_string(),
+                                )
+                                .into());
+                            }
+                        }
+                    }
+                }
+                Token::StringValue(key) => key, // key tokenはstringのみ許容 https://www.rfc-editor.org/rfc/rfc8259#section-4
                 _ => {
-                    return Err(ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()).into());
+                    return Err(ParseError::UnexpectedToken(
+                        "found a Token that cannot be a key".to_string(),
+                    )
+                    .into());
                 }
             };
 
-            let key_token = if times == 0 {
-                // string確定
-                first_token
-            } else {
-                self.next_grammar().ok_or(ParseError::UnClosedToken)?
-            };
-
-            if key_token == Token::CloseBrace {
-                // trailing comma
-                break;
-            }
-
             // todo 末尾カンマ除去をしようとするとnext_grammarの振る舞いが厄介なので再検討
-            match (key_token, self.next_grammar(), self.parse_value()?) {
-                (Token::StringValue(key), Some(Token::Colon), node) => {
+            match (key, self.next_grammar(), self.parse_value()?) {
+                (key, Some(Token::Colon), node) => {
                     member.insert(key, node);
                 }
                 _ => return Err(ParseError::UnexpectedConsumedUpToken.into()),
@@ -134,7 +148,12 @@ impl<'a> Parser<'a> {
                 Token::Null => result.push(Node::Null),
                 Token::OpenBrace => result.push(self.parse_object()?),
                 Token::OpenBracket => result.push(self.parse_array()?),
-                _ => return Err(ParseError::UnexpectedToken("found an unexpected token while parsing the array".to_string()).into()),
+                _ => {
+                    return Err(ParseError::UnexpectedToken(
+                        "found an unexpected token while parsing the array".to_string(),
+                    )
+                    .into())
+                }
             }
         }
         Ok(Node::Array(result))
@@ -223,7 +242,10 @@ mod tests {
             Token::StringValue("test".to_string()),
             Token::StringValue("test".to_string()),
         ];
-        assert_parse_err(data, ParseError::UnexpectedToken("contains multiple values".to_string()));
+        assert_parse_err(
+            data,
+            ParseError::UnexpectedToken("contains multiple values".to_string()),
+        );
     }
 
     #[test]
@@ -325,7 +347,10 @@ mod tests {
             Token::Comma,
             Token::CloseBrace,
         ];
-        assert_parse_err(data, ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()));
+        assert_parse_err(
+            data,
+            ParseError::UnexpectedToken("found a Token that cannot be a key".to_string()),
+        );
     }
 
     #[test]
@@ -339,7 +364,10 @@ mod tests {
             Token::CloseBrace,
         ];
 
-        assert_parse_err(data, ParseError::UnexpectedToken("contains a token other than the value".to_string()));
+        assert_parse_err(
+            data,
+            ParseError::UnexpectedToken("contains a token other than the value".to_string()),
+        );
     }
 
     #[test]
