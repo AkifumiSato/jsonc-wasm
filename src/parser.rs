@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
             _ => Err(ParseError::UnexpectedToken(
                 "contains a token other than the value".to_string(),
             )
-                .into()),
+            .into()),
         }
     }
 
@@ -84,7 +84,7 @@ impl<'a> Parser<'a> {
                         return Err(ParseError::UnexpectedToken(
                             "first comma is not allowed".to_string(),
                         )
-                            .into());
+                        .into());
                     } else {
                         let token = self.next_grammar().ok_or(ParseError::UnexpectedToken(
                             "found a Token that cannot be a key".to_string(),
@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
                                 return Err(ParseError::UnexpectedToken(
                                     "found a Token that cannot be a key".to_string(),
                                 )
-                                    .into());
+                                .into());
                             }
                         }
                     }
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
                     return Err(ParseError::UnexpectedToken(
                         "found a Token that cannot be a key".to_string(),
                     )
-                        .into());
+                    .into());
                 }
             };
 
@@ -136,7 +136,7 @@ impl<'a> Parser<'a> {
                         return Err(ParseError::UnexpectedToken(
                             "first comma is not allowed".to_string(),
                         )
-                            .into());
+                        .into());
                     } else {
                         let token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
                         if token == Token::CloseBracket {
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
                     return Err(ParseError::UnexpectedToken(
                         "found an unexpected token while parsing the array".to_string(),
                     )
-                        .into())
+                    .into())
                 }
             }
         }
