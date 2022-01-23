@@ -127,21 +127,30 @@ impl<'a> Parser<'a> {
         let mut times = 0;
         let mut result = vec![];
         loop {
-            let mut token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
-            if token == Token::CloseBracket {
-                // closeでないならvalueのみ
-                break;
-            } else if times != 0 {
-                if token != Token::Comma {
-                    return Err(ParseError::LackComma.into());
+            let first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+            let value = match first_token {
+                Token::CloseBracket => break,
+                Token::Comma => {
+                    // 0回目の時はcommaはなし
+                    if times == 0 {
+                        return Err(ParseError::UnexpectedToken(
+                            "first comma is not allowed".to_string(),
+                        )
+                        .into());
+                    } else {
+                        let token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+                        if token == Token::CloseBracket {
+                            break;
+                        };
+                        token
+                    }
                 }
-                // commaの次のTokenを取得
-                token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
+                _ => first_token,
             };
 
             times += 1;
 
-            match token {
+            match value {
                 Token::StringValue(value) => result.push(Node::StringValue(value)),
                 Token::Number(value) => result.push(Node::Number(value)),
                 Token::Boolean(value) => result.push(Node::Boolean(value)),
@@ -372,42 +381,75 @@ mod tests {
 
     #[test]
     fn parse_array_value() {
-        let data_expect_list = vec![(
-            // tuple case
-            vec![
-                Token::OpenBracket,
-                Token::BreakLine,
-                Token::WhiteSpaces(4),
-                Token::StringValue("hoge".to_string()),
-                Token::Comma,
-                Token::BreakLine,
-                Token::WhiteSpaces(4),
-                Token::Number("999".to_string()),
-                Token::Comma,
-                Token::BreakLine,
-                Token::WhiteSpaces(4),
-                Token::OpenBrace,
-                Token::StringValue("name".to_string()),
-                Token::Colon,
-                Token::StringValue("sato".to_string()),
-                Token::CloseBrace,
-                Token::Comma,
-                Token::BreakLine,
-                Token::OpenBracket,
-                Token::Number("123".to_string()),
-                Token::CloseBracket,
-                Token::CloseBracket,
-            ],
-            Node::Array(vec![
-                Node::StringValue("hoge".to_string()),
-                Node::Number("999".to_string()),
-                Node::Object(HashMap::from([(
-                    "name".to_string(),
-                    Node::StringValue("sato".to_string()),
-                )])),
-                Node::Array(vec![Node::Number("123".to_string())]),
-            ]),
-        )];
+        let data_expect_list = vec![
+            (
+                // has object
+                vec![
+                    Token::OpenBracket,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::StringValue("hoge".to_string()),
+                    Token::Comma,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::Number("999".to_string()),
+                    Token::Comma,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::OpenBrace,
+                    Token::StringValue("name".to_string()),
+                    Token::Colon,
+                    Token::StringValue("sato".to_string()),
+                    Token::CloseBrace,
+                    Token::Comma,
+                    Token::BreakLine,
+                    Token::OpenBracket,
+                    Token::Number("123".to_string()),
+                    Token::CloseBracket,
+                    Token::CloseBracket,
+                ],
+                Node::Array(vec![
+                    Node::StringValue("hoge".to_string()),
+                    Node::Number("999".to_string()),
+                    Node::Object(HashMap::from([(
+                        "name".to_string(),
+                        Node::StringValue("sato".to_string()),
+                    )])),
+                    Node::Array(vec![Node::Number("123".to_string())]),
+                ]),
+            ),
+            // trailing comma
+            (
+                vec![
+                    Token::OpenBracket,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::StringValue("hoge".to_string()),
+                    Token::Comma,
+                    Token::BreakLine,
+                    Token::WhiteSpaces(4),
+                    Token::Number("999".to_string()),
+                    Token::Comma,
+                    Token::CloseBracket,
+                ],
+                Node::Array(vec![
+                    Node::StringValue("hoge".to_string()),
+                    Node::Number("999".to_string()),
+                ]),
+            ),
+        ];
         assert_parse(data_expect_list);
+    }
+
+    #[test]
+    fn parse_array_value_invalid() {
+        let data = vec![
+            Token::OpenBracket,
+            Token::BreakLine,
+            Token::WhiteSpaces(4),
+            Token::StringValue("hoge".to_string()),
+            Token::Comma,
+        ];
+        assert_parse_err(data, ParseError::UnClosedToken);
     }
 }
