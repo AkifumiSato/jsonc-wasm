@@ -1,12 +1,8 @@
-extern crate wasm_bindgen;
-
+use crate::token::{LexerError, Location, Token};
+use crate::utils::is_number_token_char;
 use anyhow::Result;
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
-use wasm_bindgen::prelude::*;
-
-use crate::token::{LexerError, Location, Token};
-use crate::utils::is_number_token_char;
 
 struct Lexer<'a> {
     input: Peekable<Enumerate<Chars<'a>>>,
@@ -229,21 +225,10 @@ impl<'a> Lexer<'a> {
     }
 }
 
-#[wasm_bindgen]
-pub fn greet(name: &str) -> String {
-    let message = format!("Hello, {}!!!", name);
-    message.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::token::Token;
-
-    #[test]
-    fn greet_name() {
-        assert_eq!(greet("world"), "Hello, world!!!");
-    }
 
     #[test]
     fn lexer_should_success_scan() {

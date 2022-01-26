@@ -1,19 +1,10 @@
+use crate::node::Node;
 use crate::token::Token;
 use anyhow::{ensure, Result};
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::slice::Iter;
 use thiserror::Error;
-
-#[derive(Debug, PartialEq)]
-pub enum Node {
-    StringValue(String),
-    Number(String), // 浮動少数誤差を扱わないため、String
-    Boolean(bool),
-    Null,
-    Object(HashMap<String, Node>),
-    Array(Vec<Node>),
-}
 
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
@@ -110,7 +101,6 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            // todo 末尾カンマ除去をしようとするとnext_grammarの振る舞いが厄介なので再検討
             match (key, self.next_grammar(), self.parse_value()?) {
                 (key, Some(Token::Colon), node) => {
                     member.insert(key, node);
