@@ -1,7 +1,7 @@
 use crate::node::Node;
 use crate::token::Token;
 use anyhow::{ensure, Result};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter::Peekable;
 use std::slice::Iter;
 use thiserror::Error;
@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
 
     fn parse_object(&mut self) -> Result<Node> {
         let mut times = 0;
-        let mut member = HashMap::new();
+        let mut member = BTreeMap::new();
         loop {
             // close,comma,stringのいづれか
             let first_token = self.next_grammar().ok_or(ParseError::UnClosedToken)?;
@@ -177,6 +177,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     fn assert_parse(data: Vec<(Vec<Token>, Node)>) {
         for (tokens, expect) in data.iter() {
@@ -270,7 +271,7 @@ mod tests {
                     Token::BreakLine,
                     Token::CloseBrace,
                 ],
-                Node::Object(HashMap::from([
+                Node::Object(BTreeMap::from([
                     ("name".to_string(), Node::StringValue("sato".to_string())),
                     ("age".to_string(), Node::Number("20".to_string())),
                 ])),
@@ -289,9 +290,9 @@ mod tests {
                     Token::CloseBrace,
                     Token::CloseBrace,
                 ],
-                Node::Object(HashMap::from([(
+                Node::Object(BTreeMap::from([(
                     "user".to_string(),
-                    Node::Object(HashMap::from([(
+                    Node::Object(BTreeMap::from([(
                         "name".to_string(),
                         Node::StringValue("sato".to_string()),
                     )])),
@@ -308,7 +309,7 @@ mod tests {
                     Token::Comma,
                     Token::CloseBrace,
                 ],
-                Node::Object(HashMap::from([(
+                Node::Object(BTreeMap::from([(
                     "name".to_string(),
                     Node::StringValue("sato".to_string()),
                 )])),
@@ -401,7 +402,7 @@ mod tests {
                 Node::Array(vec![
                     Node::StringValue("hoge".to_string()),
                     Node::Number("999".to_string()),
-                    Node::Object(HashMap::from([(
+                    Node::Object(BTreeMap::from([(
                         "name".to_string(),
                         Node::StringValue("sato".to_string()),
                     )])),
