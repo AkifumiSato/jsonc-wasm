@@ -20,12 +20,12 @@ pub enum ParseError {
     LackComma,
 }
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     tokens: Peekable<Iter<'a, Token>>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(tokens: &'a Vec<Token>) -> Self {
+    pub fn new(tokens: &'a Vec<Token>) -> Self {
         Parser {
             tokens: tokens.iter().peekable(),
         }

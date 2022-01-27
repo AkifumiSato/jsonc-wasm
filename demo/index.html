@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <title>jsonc-wasm demo</title>
+    <meta charset="utf-8">
+</head>
+<body>
+<code id="data">
+</code>
+<script type="module">
+    import init, {parse} from "../pkg/jsonc_wasm.js";
+
+    await init()
+    const res = parse(JSON.stringify({
+        'key': 'value',
+    }))
+    document.getElementById('data').innerText = res
+    console.log(res)
+</script>
+</body>
+</html>

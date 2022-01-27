@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::iter::{Enumerate, Peekable};
 use std::str::Chars;
 
-struct Lexer<'a> {
+pub struct Lexer<'a> {
     input: Peekable<Enumerate<Chars<'a>>>,
 }
 
