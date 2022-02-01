@@ -1,7 +1,9 @@
 [package]
 name = "jsonc-wasm"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
+description = "By using this package, you can acquire JSON strings that can be parsed from JSONC(JSON with comment)."
+repository = "https://github.com/AkifumiSato/jsonc-wasm"
 
 [lib]
 crate-type = ["cdylib"]
