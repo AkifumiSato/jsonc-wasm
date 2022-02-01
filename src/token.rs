@@ -1,4 +1,3 @@
-use core::cmp::{max, min};
 use thiserror::Error;
 
 /// Location情報
@@ -8,12 +7,6 @@ use thiserror::Error;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location(pub usize, pub usize);
-
-impl Location {
-    fn merge(&self, target: Location) -> Location {
-        Location(min(self.0, target.0), max(self.1, target.1))
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
@@ -41,18 +34,4 @@ pub enum LexerError {
     NotExistTerminalSymbol, // 終端記号が不在
     #[error("Not escape string")]
     NotEscapeString,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn location_merge() {
-        let location1 = Location(0, 1);
-        let location2 = Location(1, 10);
-        let merge_result = location1.merge(location2);
-        assert_eq!(merge_result.0, 0);
-        assert_eq!(merge_result.1, 10);
-    }
 }

@@ -16,8 +16,6 @@ pub enum ParseError {
     UnexpectedConsumedUpToken,
     #[error("Un closed Token")]
     UnClosedToken,
-    #[error("Lack comma")]
-    LackComma,
 }
 
 pub struct Parser<'a> {

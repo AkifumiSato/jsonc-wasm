@@ -8,14 +8,32 @@
 <code id="data">
 </code>
 <script type="module">
-    import init, {parse} from "../pkg/jsonc_wasm.js";
+    import init, {toJsonString} from "../pkg/jsonc_wasm.js";
 
     await init()
-    const res = parse(JSON.stringify({
-        'key': 'value',
-    }))
+    const res = toJsonString(
+`{
+  // comment line
+  /**
+   * comment block
+   */
+  "browsers": {
+    "firefox": {
+      "name": "Firefox", // FF
+      "pref_url": "about:config",
+      "releases": {
+        "1": {
+          "release_date": "2004-11-09",
+          "status": "retired",
+          "engine": "Gecko",
+          "engine_version": "1.7"
+        }
+      }
+    }
+  }
+}`)
     document.getElementById('data').innerText = res
-    console.log(res)
+    console.log(JSON.parse(res))
 </script>
 </body>
 </html>

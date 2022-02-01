@@ -9,12 +9,11 @@ mod parser;
 mod token;
 mod utils;
 
-#[wasm_bindgen]
-pub fn parse(data: String) -> String {
+#[wasm_bindgen(js_name = toJsonString)]
+pub fn to_json_string(data: String) -> Result<String, String> {
     let mut lexer = Lexer::new(&data);
-    let token = lexer.tokenize().unwrap(); // todo remove unwrap
+    let token = lexer.tokenize().or_else(|e| Err(e.to_string()))?;
     let mut parser = Parser::new(&token);
-    let res = parser.parse().unwrap(); // todo remove unwrap
-    res.to_json_string()
-    // todo ここでJSON.parseをcall
+    let res = parser.parse().or_else(|e| Err(e.to_string()))?;
+    Ok(res.to_json_string())
 }
